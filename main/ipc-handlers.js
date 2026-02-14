@@ -4,6 +4,92 @@ const path = require('path');
 const { renderSignature } = require('./lib/signature-renderer');
 const { signPdf } = require('./lib/pdf-signer');
 
+const MAX_NAME_LENGTH = 200;
+const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_ELEMENTS = 100;
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * Validates render-signature input options.
+ * Throws a descriptive error on invalid input.
+ */
+function validateSignatureOpts(opts) {
+  if (!opts || typeof opts !== 'object') {
+    throw new Error('Signature options must be an object');
+  }
+  const { name, fontIndex, fontSize, color } = opts;
+
+  if (typeof name !== 'string' || name.trim().length === 0) {
+    throw new Error('Signature name must be a non-empty string');
+  }
+  if (name.length > MAX_NAME_LENGTH) {
+    throw new Error(`Signature name must be under ${MAX_NAME_LENGTH} characters`);
+  }
+
+  if (fontIndex !== undefined) {
+    if (!Number.isInteger(fontIndex) || fontIndex < 0 || fontIndex > 5) {
+      throw new Error('fontIndex must be an integer between 0 and 5');
+    }
+  }
+
+  if (fontSize !== undefined) {
+    if (typeof fontSize !== 'number' || fontSize < 8 || fontSize > 200) {
+      throw new Error('fontSize must be a number between 8 and 200');
+    }
+  }
+
+  if (color !== undefined) {
+    if (typeof color !== 'string' || !HEX_COLOR_RE.test(color)) {
+      throw new Error('color must be a hex color string (e.g. #000000)');
+    }
+  }
+}
+
+/**
+ * Validates a single element for the sign-pdf handler.
+ */
+function validateElement(el, index) {
+  if (!el || typeof el !== 'object') {
+    throw new Error(`Element at index ${index} must be an object`);
+  }
+  if (el.type !== 'signature' && el.type !== 'text') {
+    throw new Error(`Element at index ${index} must have type 'signature' or 'text'`);
+  }
+  if (typeof el.page !== 'number' || !Number.isInteger(el.page) || el.page < 0) {
+    throw new Error(`Element at index ${index} must have a non-negative integer page`);
+  }
+  if (typeof el.x !== 'number' || typeof el.y !== 'number') {
+    throw new Error(`Element at index ${index} must have numeric x and y coordinates`);
+  }
+
+  if (el.type === 'signature') {
+    if (typeof el.value !== 'string' || el.value.trim().length === 0) {
+      throw new Error(`Signature element at index ${index} must have a non-empty value`);
+    }
+    if (el.fontIndex !== undefined && (!Number.isInteger(el.fontIndex) || el.fontIndex < 0 || el.fontIndex > 5)) {
+      throw new Error(`Signature element at index ${index} has invalid fontIndex`);
+    }
+  }
+
+  if (el.type === 'text') {
+    if (typeof el.value !== 'string' || el.value.length === 0) {
+      throw new Error(`Text element at index ${index} must have a non-empty value`);
+    }
+  }
+
+  if (el.fontSize !== undefined) {
+    if (typeof el.fontSize !== 'number' || el.fontSize < 1 || el.fontSize > 200) {
+      throw new Error(`Element at index ${index} has invalid fontSize`);
+    }
+  }
+
+  if (el.color !== undefined) {
+    if (typeof el.color !== 'string' || !HEX_COLOR_RE.test(el.color)) {
+      throw new Error(`Element at index ${index} has invalid color format`);
+    }
+  }
+}
+
 /**
  * Registers all IPC handlers for main↔renderer communication.
  * @param {Electron.BrowserWindow} mainWindow
@@ -12,6 +98,8 @@ function registerHandlers(mainWindow) {
   // Render a signature image from typed text
   ipcMain.handle('render-signature', async (_event, opts) => {
     try {
+      // Input validation
+      validateSignatureOpts(opts);
       const result = await renderSignature(opts);
       return result;
     } catch (err) {
@@ -22,6 +110,31 @@ function registerHandlers(mainWindow) {
   // Sign a PDF with placed elements (signatures + text)
   ipcMain.handle('sign-pdf', async (_event, pdfBytes, elements) => {
     try {
+      // Validate pdfBytes
+      if (!pdfBytes || !(pdfBytes instanceof Uint8Array || Buffer.isBuffer(pdfBytes) || Array.isArray(pdfBytes))) {
+        throw new Error('pdfBytes must be a Buffer, Uint8Array, or array of bytes');
+      }
+      const buf = Buffer.from(pdfBytes);
+      if (buf.length === 0) {
+        throw new Error('pdfBytes must not be empty');
+      }
+      if (buf.length > MAX_PDF_SIZE) {
+        throw new Error(`PDF size exceeds the ${MAX_PDF_SIZE / (1024 * 1024)}MB limit`);
+      }
+
+      // Validate elements
+      if (!Array.isArray(elements) || elements.length === 0) {
+        throw new Error('elements must be a non-empty array');
+      }
+      if (elements.length > MAX_ELEMENTS) {
+        throw new Error(`Too many elements (max ${MAX_ELEMENTS})`);
+      }
+
+      // Validate each element
+      for (let i = 0; i < elements.length; i++) {
+        validateElement(elements[i], i);
+      }
+
       // For each signature element, render the signature and attach the dataUrl
       for (const el of elements) {
         if (el.type === 'signature') {
@@ -35,7 +148,7 @@ function registerHandlers(mainWindow) {
         }
       }
 
-      const result = await signPdf(Buffer.from(pdfBytes), elements);
+      const result = await signPdf(buf, elements);
       return result;
     } catch (err) {
       throw new Error(`Failed to sign PDF: ${err.message}`);

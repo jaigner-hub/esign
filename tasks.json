@@ -190,7 +190,7 @@
       "In renderer app.js: wrap all electronAPI calls in try/catch, show error toast to the user with the error message.",
       "Verify: node -e \"const fs = require('fs'); const c = fs.readFileSync('main/ipc-handlers.js','utf8'); console.log(c.includes('validation') || (c.includes('throw') && c.includes('fontIndex')) ? 'ok' : 'fail')\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 16,

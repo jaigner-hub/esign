@@ -19,7 +19,16 @@ function parseHexColor(hex) {
  * @returns {Promise<Uint8Array>} The modified PDF bytes.
  */
 async function signPdf(pdfBytes, elements) {
-  const pdfDoc = await PDFDocument.load(pdfBytes);
+  let pdfDoc;
+  try {
+    pdfDoc = await PDFDocument.load(pdfBytes);
+  } catch (err) {
+    if (err.message && (err.message.toLowerCase().includes('encrypt') || err.message.toLowerCase().includes('password'))) {
+      throw new Error('This PDF is encrypted/password-protected and cannot be signed');
+    }
+    throw err;
+  }
+
   const pages = pdfDoc.getPages();
   const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 

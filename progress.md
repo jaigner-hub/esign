@@ -153,3 +153,22 @@
 - Targets: Windows (nsis), macOS (dmg), Linux (AppImage)
 - package.json already had correct script: "package": "electron-builder --config forge.config.js"
 - Verification passes: forge.config.js exists and pkg.scripts.package is defined
+
+### Task 15 — Add input validation and error handling throughout (2026-02-14)
+- Added comprehensive input validation to render-signature IPC handler in ipc-handlers.js:
+  - Validates name is non-empty string under 200 chars
+  - Validates fontIndex is integer 0-5
+  - Validates fontSize is number 8-200
+  - Validates color matches hex color pattern /^#[0-9a-fA-F]{6}$/
+- Added comprehensive input validation to sign-pdf IPC handler:
+  - Validates pdfBytes is Buffer/Uint8Array/Array with length > 0 and < 50MB
+  - Validates elements is non-empty array with length < 100
+  - Validates each element has required fields (type, page, x, y) and type-specific fields
+  - Per-element validation for fontSize, color, fontIndex ranges
+- Added encrypted PDF detection in pdf-signer.js:
+  - Wrapped PDFDocument.load in try/catch; checks for 'encrypt' or 'password' in error messages
+  - Throws user-friendly error: "This PDF is encrypted/password-protected and cannot be signed"
+- Coordinate clamping in pdf-signer.js was already implemented (page index, x/y, width/height)
+- Error handling in renderer app.js was already complete (all electronAPI calls wrapped in try/catch with toast messages)
+- Extracted validation functions (validateSignatureOpts, validateElement) for clean code organization
+- Verification passes: ipc-handlers.js contains throw and fontIndex validation
