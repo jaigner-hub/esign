@@ -14,3 +14,9 @@
 - Downloaded all 6 TTF files from google/fonts GitHub repo (HomemadeApple is under apache/ not ofl/)
 - Created main/lib/font-loader.js with FONTS array and loadFontBuffer()
 - All verification steps passed
+
+### Iteration 3 — Task 3: Build signature renderer module
+- Created main/lib/signature-renderer.js using @napi-rs/canvas
+- Registers fonts via GlobalFonts.registerFromPath, measures text, renders to transparent canvas
+- Returns { dataUrl, width, height } with PNG base64 data URL
+- All verification steps passed
