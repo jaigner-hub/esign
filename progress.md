@@ -26,3 +26,13 @@
 - Returns { dataUrl, width, height } where dataUrl is data:image/png;base64,...
 - Validates name is non-empty string, fontIndex is in valid range
 - Verified with all 6 font indices, empty name error case, and task verification step
+
+### Task 4 — Build PDF signer module using pdf-lib (2026-02-14)
+- Created main/lib/pdf-signer.js with async signPdf(pdfBytes, elements) function
+- Uses pdf-lib: loads PDF, embeds Helvetica for text elements, embeds PNG for signature elements
+- Parses hex color strings to rgb values for text drawing
+- Clamps page index to valid range (0 to pageCount-1) and coordinates to page dimensions
+- Handles both signature elements (base64 PNG dataUrl → embedPng → drawImage) and text elements (drawText with Helvetica)
+- Created test/fixtures/generate-pdfs.js to generate sample.pdf (1-page US Letter with placeholder text)
+- Generated test/fixtures/sample.pdf successfully
+- Verified: text element signing produces valid PDF, signature element signing produces valid PDF with %PDF- header
