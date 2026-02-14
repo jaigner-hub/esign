@@ -111,7 +111,7 @@
       "Handle the pdf.js worker by setting pdfjsLib.GlobalWorkerOptions.workerSrc to the local pdfjs-dist worker path (use a require.resolve or relative path to node_modules/pdfjs-dist/build/pdf.worker.min.mjs)",
       "Verify: test -f renderer/js/pdf-viewer.js && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/js/pdf-viewer.js','utf8'); console.log(c.includes('pdfjsLib') && c.includes('renderAllPages') && c.includes('getScale') ? 'ok' : 'fail')\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 10,

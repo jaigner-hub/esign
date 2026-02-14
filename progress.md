@@ -85,3 +85,12 @@
 - Toast notifications: fixed bottom-right, color-coded (success green, error red, info blue), slide-in/out animations
 - Design: #1a1a2e header, #f5f5f5 body background, #4361ee accent color for buttons and highlights
 - Verification passes: file exists
+
+### Task 9 — Implement PDF viewer with pdf.js rendering all pages (2026-02-14)
+- Created renderer/js/pdf-viewer.js exposing window.PdfViewer
+- Implements init(containerEl), loadPdf(uint8Array), renderAllPages(), getPageDimensions(pageIndex), getScale(), getPageCount()
+- Uses pdfjsLib.getDocument() to load PDF, iterates all pages, creates .pdf-page wrapper divs with canvas + .page-overlay div
+- Renders at scale fitting container width (max 800px), stores per-page PDF point dimensions
+- Each page wrapper has data-page-index attribute for element placement targeting
+- pdf.js worker configured in index.html via ES module import (already done in Task 7)
+- Verification passes: file exists and contains pdfjsLib, renderAllPages, getScale
