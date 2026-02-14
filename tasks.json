@@ -99,7 +99,7 @@
       "Use a clean modern design: #1a1a2e header, #f5f5f5 background, #4361ee accent color for buttons",
       "Verify: test -f renderer/css/style.css && echo 'ok'"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 9,

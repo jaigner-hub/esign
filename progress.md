@@ -44,3 +44,9 @@
 - Configured pdf.js workerSrc to local pdfjs-dist path
 - Included all renderer JS scripts and CSS link
 - All verification steps passed
+
+### Iteration 8 — Task 8: Create CSS styles
+- Created renderer/css/style.css with full application styling
+- Header (#1a1a2e), drop zone, workspace flexbox layout, PDF page containers, element overlays
+- Resize handles, action bar, loading spinner, toast notifications
+- All verification steps passed
