@@ -1,3 +1,4 @@
+const fs = require('fs');
 const { GlobalFonts, createCanvas } = require('@napi-rs/canvas');
 const { FONTS } = require('./font-loader');
 
@@ -26,7 +27,8 @@ async function renderSignature({ name, fontIndex = 0, fontSize = 48, color = '#0
 
   // Register the font if not already registered
   if (!registeredFonts.has(fontIndex)) {
-    GlobalFonts.registerFromPath(font.path, font.name);
+    const fontBuffer = fs.readFileSync(font.path);
+    GlobalFonts.register(fontBuffer, font.name);
     registeredFonts.add(fontIndex);
   }
 
@@ -37,18 +39,20 @@ async function renderSignature({ name, fontIndex = 0, fontSize = 48, color = '#0
   const metrics = measureCtx.measureText(name);
 
   const padding = 20;
-  const width = Math.ceil(metrics.width) + padding;
-  const height = Math.ceil(fontSize * 1.5);
+  const ascent = Math.ceil(metrics.actualBoundingBoxAscent || fontSize);
+  const descent = Math.ceil(metrics.actualBoundingBoxDescent || fontSize * 0.4);
+  const width = Math.ceil(metrics.actualBoundingBoxRight - (metrics.actualBoundingBoxLeft || 0)) + padding * 2;
+  const height = ascent + descent + padding;
 
   // Create the actual canvas with correct dimensions
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // Draw text
+  // Draw text positioned using actual ascent so nothing clips
   ctx.font = `${fontSize}px ${font.name}`;
   ctx.fillStyle = color;
-  ctx.textBaseline = 'top';
-  ctx.fillText(name, padding / 2, fontSize * 0.15);
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(name, padding / 2, ascent + padding / 2);
 
   // Export as PNG data URL
   const pngBuffer = canvas.toBuffer('image/png');

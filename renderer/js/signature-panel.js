@@ -25,6 +25,7 @@
   let selectedFontIndex = 0;
   let fontBoxes = [];
   let lastPreview = null; // { dataUrl, width, height }
+  let previewTimer = null;
 
   /**
    * Initialize the signature panel UI inside the given container.
@@ -87,7 +88,7 @@
     fontSizeSlider.value = '48';
     fontSizeSlider.addEventListener('input', function () {
       fontSizeLabel.textContent = fontSizeSlider.value;
-      clearPreview();
+      autoPreview();
     });
     containerEl.appendChild(fontSizeSlider);
 
@@ -100,7 +101,7 @@
     colorInput.type = 'color';
     colorInput.value = '#000000';
     colorInput.addEventListener('input', function () {
-      clearPreview();
+      autoPreview();
     });
     containerEl.appendChild(colorInput);
 
@@ -113,12 +114,6 @@
     // Action buttons
     const actions = document.createElement('div');
     actions.className = 'panel-actions';
-
-    previewBtn = document.createElement('button');
-    previewBtn.className = 'btn-secondary';
-    previewBtn.textContent = 'Preview';
-    previewBtn.addEventListener('click', onPreview);
-    actions.appendChild(previewBtn);
 
     addBtn = document.createElement('button');
     addBtn.className = 'btn-primary';
@@ -135,7 +130,7 @@
     for (let i = 0; i < fontBoxes.length; i++) {
       fontBoxes[i].classList.toggle('selected', i === index);
     }
-    clearPreview();
+    autoPreview();
   }
 
   function onNameChange() {
@@ -144,22 +139,26 @@
     for (let i = 0; i < fontBoxes.length; i++) {
       fontBoxes[i].textContent = name || 'Signature';
     }
-    clearPreview();
+    autoPreview();
   }
 
   function clearPreview() {
     lastPreview = null;
     addBtn.disabled = true;
-    previewArea.innerHTML = '<span style="color:#999;font-size:12px;">Preview will appear here</span>';
+    previewArea.innerHTML = '<span style="color:#999;font-size:12px;">Type your name above</span>';
   }
 
-  async function onPreview() {
+  function autoPreview() {
+    clearPreview();
+    if (previewTimer) clearTimeout(previewTimer);
     const name = nameInput.value.trim();
-    if (!name) {
-      showToast('Please enter your name', 'error');
-      return;
-    }
+    if (!name) return;
+    previewTimer = setTimeout(function () {
+      renderPreview(name);
+    }, 300);
+  }
 
+  async function renderPreview(name) {
     const opts = {
       name: name,
       fontIndex: selectedFontIndex,
@@ -168,10 +167,9 @@
     };
 
     try {
-      previewBtn.disabled = true;
-      previewBtn.textContent = 'Rendering...';
-
       const result = await window.electronAPI.renderSignature(opts);
+      // Only apply if name hasn't changed during render
+      if (nameInput.value.trim() !== name) return;
       lastPreview = result;
 
       previewArea.innerHTML = '';
@@ -183,9 +181,6 @@
     } catch (err) {
       showToast('Failed to render signature: ' + err.message, 'error');
       clearPreview();
-    } finally {
-      previewBtn.disabled = false;
-      previewBtn.textContent = 'Preview';
     }
   }
 

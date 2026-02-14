@@ -15,7 +15,7 @@ module.exports = {
     "node_modules/@napi-rs/canvas/**/*"
   ],
   win: {
-    target: "nsis",
+    target: "portable",
     icon: null
   },
   mac: {

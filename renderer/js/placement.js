@@ -78,15 +78,27 @@
     } else if (type === 'text') {
       const textSpan = document.createElement('span');
       textSpan.className = 'element-text';
-      textSpan.contentEditable = 'true';
+      textSpan.contentEditable = 'false';
       textSpan.textContent = options.value || 'Text';
       textSpan.style.fontSize = (options.fontSize || 12) + 'px';
       textSpan.style.color = options.color || '#000000';
-      textSpan.addEventListener('mousedown', function (e) {
-        // Allow text selection clicks without starting drag
-        e.stopPropagation();
-      });
+      textSpan.style.pointerEvents = 'none';
+      textSpan.style.userSelect = 'none';
       el.appendChild(textSpan);
+
+      // Double-click to edit text, single-click drags
+      el.addEventListener('dblclick', function (e) {
+        e.stopPropagation();
+        textSpan.contentEditable = 'true';
+        textSpan.style.pointerEvents = 'auto';
+        textSpan.style.userSelect = 'auto';
+        textSpan.focus();
+      });
+      textSpan.addEventListener('blur', function () {
+        textSpan.contentEditable = 'false';
+        textSpan.style.pointerEvents = 'none';
+        textSpan.style.userSelect = 'none';
+      });
 
       // Set initial size
       el.style.width = 'auto';
