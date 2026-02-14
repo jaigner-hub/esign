@@ -220,7 +220,7 @@
       "Test pdf-signer: signPdf with out-of-range page index clamps without error",
       "Verify: npx mocha test/test-sign.js --timeout 15000"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 18,

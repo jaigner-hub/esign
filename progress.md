@@ -99,3 +99,8 @@
 - pdf-viewer.js stores per-page dimensions, placement.js uses them for coordinate conversion
 - Verified signing elements on pages 0 and 2 of multipage.pdf works correctly
 - All verification steps passed
+
+### Iteration 17 — Task 17: Write unit/integration tests
+- Created test/test-sign.js with 7 mocha/chai tests
+- Tests: valid signature render, empty name error, all 6 fonts, text element signing, signature element signing, multipage elements, out-of-range page clamping
+- All 7 tests passing
