@@ -144,3 +144,12 @@
 - Listens for menu-triggered Open PDF via electronAPI.onMenuOpenPdf
 - Stores originalPdfBytes and originalFilename for the sign & save flow
 - Verification passes: file contains signPdf, openFileDialog, and DOMContentLoaded
+
+### Task 14 — Configure electron-builder for packaging (2026-02-14)
+- Created forge.config.js with electron-builder configuration (CommonJS module.exports format)
+- appId: 'com.esign.app', productName: 'esign'
+- files: includes main/, renderer/, assets/, and package.json in the asar bundle
+- asarUnpack: node_modules/@napi-rs/canvas/**/* (native .node bindings must not be packed in asar)
+- Targets: Windows (nsis), macOS (dmg), Linux (AppImage)
+- package.json already had correct script: "package": "electron-builder --config forge.config.js"
+- Verification passes: forge.config.js exists and pkg.scripts.package is defined

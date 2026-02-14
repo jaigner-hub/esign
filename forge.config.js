@@ -1,33 +1,29 @@
+/**
+ * electron-builder configuration for esign
+ * Used via: electron-builder --config forge.config.js
+ */
 module.exports = {
-  appId: 'com.esign.app',
-  productName: 'esign',
-  directories: {
-    output: 'dist',
-  },
+  appId: "com.esign.app",
+  productName: "esign",
   files: [
-    'main/**/*',
-    'renderer/**/*',
-    'assets/**/*',
-    'node_modules/**/*',
-    'package.json',
+    "main/**/*",
+    "renderer/**/*",
+    "assets/**/*",
+    "package.json"
   ],
   asarUnpack: [
-    'node_modules/@napi-rs/canvas/**/*',
+    "node_modules/@napi-rs/canvas/**/*"
   ],
   win: {
-    target: 'nsis',
-    icon: null,
+    target: "nsis",
+    icon: null
   },
   mac: {
-    target: 'dmg',
-    icon: null,
+    target: "dmg",
+    icon: null
   },
   linux: {
-    target: 'AppImage',
-    icon: null,
-  },
-  nsis: {
-    oneClick: false,
-    allowToChangeInstallationDirectory: true,
-  },
+    target: "AppImage",
+    icon: null
+  }
 };
