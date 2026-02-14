@@ -1,59 +1,52 @@
-/* Placement Engine - drag, drop, resize elements on PDF pages */
+/**
+ * Placement engine — drag, drop, resize elements on PDF pages
+ * Exposes window.Placement
+ */
 (function () {
   'use strict';
 
-  let elementIdCounter = 0;
-  const elements = new Map(); // id -> { el, pageIndex, type, options }
+  let nextId = 1;
+  const elements = {}; // id → { id, el, pageIndex, type, options }
+  let dragState = null;
+  let resizeState = null;
 
+  /**
+   * Initialize the placement engine.
+   */
   function init() {
-    elementIdCounter = 0;
-    elements.clear();
+    nextId = 1;
+    // Clear any existing elements
+    clearAll();
+
+    // Global mousemove and mouseup for drag/resize
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   }
 
+  /**
+   * Add a placed element to a specific page overlay.
+   * @param {number} pageIndex - 0-based page index
+   * @param {string} type - 'signature' or 'text'
+   * @param {object} options - element options
+   * @returns {string} element id
+   */
   function addElement(pageIndex, type, options) {
-    const id = 'placed-' + (++elementIdCounter);
-
-    // Find the page overlay
-    const pageWrapper = document.querySelector(`.pdf-page[data-page-index="${pageIndex}"]`);
-    if (!pageWrapper) {
-      throw new Error(`Page ${pageIndex} not found`);
+    const overlay = getPageOverlay(pageIndex);
+    if (!overlay) {
+      throw new Error('Page overlay not found for page ' + pageIndex);
     }
-    const overlay = pageWrapper.querySelector('.page-overlay');
 
-    // Create element container
+    const id = 'el-' + nextId++;
     const el = document.createElement('div');
     el.className = 'placed-element';
-    el.id = id;
-    el.style.left = '50px';
-    el.style.top = '50px';
-
-    if (type === 'signature' && options.dataUrl) {
-      const img = document.createElement('img');
-      img.src = options.dataUrl;
-      img.draggable = false;
-      el.appendChild(img);
-      el.style.width = Math.min(options.width || 200, overlay.offsetWidth - 60) + 'px';
-      el.style.height = (options.height || 50) + 'px';
-    } else if (type === 'text') {
-      const span = document.createElement('span');
-      span.className = 'element-text';
-      span.textContent = options.value || '';
-      span.style.fontSize = (options.fontSize || 12) + 'px';
-      span.style.color = options.color || '#000000';
-      span.contentEditable = true;
-      el.appendChild(span);
-      // Auto-size based on text
-      el.style.width = 'auto';
-      el.style.height = 'auto';
-      el.style.minWidth = '60px';
-      el.style.minHeight = '20px';
-    }
+    el.dataset.elementId = id;
+    el.dataset.type = type;
 
     // Delete button
     const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'delete-btn';
+    deleteBtn.className = 'element-delete';
     deleteBtn.textContent = '\u00D7';
-    deleteBtn.addEventListener('click', (e) => {
+    deleteBtn.addEventListener('mousedown', function (e) {
       e.stopPropagation();
       removeElement(id);
     });
@@ -62,192 +55,284 @@
     // Resize handle
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'resize-handle';
+    resizeHandle.addEventListener('mousedown', function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      startResize(id, e);
+    });
     el.appendChild(resizeHandle);
 
-    // Drag support
-    setupDrag(el, overlay);
+    // Content
+    if (type === 'signature' && options.dataUrl) {
+      const img = document.createElement('img');
+      img.src = options.dataUrl;
+      img.draggable = false;
+      el.appendChild(img);
 
-    // Resize support
-    setupResize(el, resizeHandle, overlay);
+      // Set initial size from rendered signature dimensions
+      const scale = window.PdfViewer ? window.PdfViewer.getScale() : 1;
+      const width = options.width ? options.width * scale : 200;
+      const height = options.height ? options.height * scale : 50;
+      el.style.width = width + 'px';
+      el.style.height = height + 'px';
+    } else if (type === 'text') {
+      const textSpan = document.createElement('span');
+      textSpan.className = 'element-text';
+      textSpan.contentEditable = 'true';
+      textSpan.textContent = options.value || 'Text';
+      textSpan.style.fontSize = (options.fontSize || 12) + 'px';
+      textSpan.style.color = options.color || '#000000';
+      textSpan.addEventListener('mousedown', function (e) {
+        // Allow text selection clicks without starting drag
+        e.stopPropagation();
+      });
+      el.appendChild(textSpan);
+
+      // Set initial size
+      el.style.width = 'auto';
+      el.style.height = 'auto';
+      el.style.minWidth = '50px';
+      el.style.minHeight = '20px';
+    }
+
+    // Position near center of overlay by default
+    const overlayRect = overlay.getBoundingClientRect();
+    const left = Math.max(0, (overlayRect.width / 2) - 100);
+    const top = Math.max(0, (overlayRect.height / 2) - 25);
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+
+    // Drag handler on the element itself
+    el.addEventListener('mousedown', function (e) {
+      if (e.target === resizeHandle) return;
+      e.preventDefault();
+      startDrag(id, e);
+    });
 
     overlay.appendChild(el);
 
-    elements.set(id, { el, pageIndex, type, options });
+    elements[id] = {
+      id,
+      el,
+      pageIndex,
+      type,
+      options
+    };
 
-    // Notify that elements changed (for enabling Sign & Save button)
-    dispatchChangeEvent();
+    // Enable sign & save button
+    updateSignButton();
 
     return id;
   }
 
+  /**
+   * Remove an element by id.
+   */
   function removeElement(id) {
-    const entry = elements.get(id);
-    if (entry) {
-      entry.el.remove();
-      elements.delete(id);
-      dispatchChangeEvent();
-    }
+    const entry = elements[id];
+    if (!entry) return;
+    entry.el.remove();
+    delete elements[id];
+    updateSignButton();
   }
 
-  function clearAll() {
-    for (const [id, entry] of elements) {
-      entry.el.remove();
-    }
-    elements.clear();
-    dispatchChangeEvent();
-  }
-
+  /**
+   * Get all placed elements with positions converted to PDF points.
+   * @returns {Array} elements in PDF coordinate format
+   */
   function getElements() {
     const result = [];
     const scale = window.PdfViewer ? window.PdfViewer.getScale() : 1;
 
-    for (const [id, entry] of elements) {
-      const { el, pageIndex, type, options } = entry;
+    for (const id of Object.keys(elements)) {
+      const entry = elements[id];
+      const el = entry.el;
+      const pageIndex = entry.pageIndex;
 
-      // Get page dimensions for this specific page
-      const pageDims = window.PdfViewer ? window.PdfViewer.getPageDimensions(pageIndex) : null;
-      const pageWrapper = document.querySelector(`.pdf-page[data-page-index="${pageIndex}"]`);
-      const pageHeightPx = pageWrapper ? pageWrapper.offsetHeight : 0;
+      // Get page dimensions in PDF points for this specific page
+      const dims = window.PdfViewer ? window.PdfViewer.getPageDimensions(pageIndex) : null;
+      if (!dims) continue;
 
-      const elLeft = parseFloat(el.style.left) || 0;
-      const elTop = parseFloat(el.style.top) || 0;
-      const elWidth = el.offsetWidth;
-      const elHeight = el.offsetHeight;
+      const pageHeightPx = dims.height * scale;
 
-      // Convert screen pixels to PDF points
-      const pdfX = elLeft / scale;
-      const pdfY = (pageHeightPx - elTop - elHeight) / scale;
-      const pdfWidth = elWidth / scale;
-      const pdfHeight = elHeight / scale;
+      // Element position/size in pixels
+      const elementLeft = parseFloat(el.style.left) || 0;
+      const elementTop = parseFloat(el.style.top) || 0;
+      const elementWidth = el.offsetWidth;
+      const elementHeight = el.offsetHeight;
 
-      const element = {
-        type,
+      // Convert to PDF coordinates (bottom-left origin)
+      const pdfX = elementLeft / scale;
+      const pdfY = (pageHeightPx - elementTop - elementHeight) / scale;
+      const pdfWidth = elementWidth / scale;
+      const pdfHeight = elementHeight / scale;
+
+      const elem = {
+        type: entry.type,
         page: pageIndex,
         x: pdfX,
         y: pdfY,
         width: pdfWidth,
-        height: pdfHeight,
+        height: pdfHeight
       };
 
-      if (type === 'signature') {
-        element.value = options.name || options.value || '';
-        element.fontIndex = options.fontIndex;
-        element.fontSize = options.fontSize;
-        element.color = options.color;
-        element.dataUrl = options.dataUrl;
-      } else if (type === 'text') {
+      if (entry.type === 'signature') {
+        elem.value = entry.options.name || '';
+        elem.fontIndex = entry.options.fontIndex !== undefined ? entry.options.fontIndex : 0;
+        elem.fontSize = entry.options.fontSize || 48;
+        elem.color = entry.options.color || '#000000';
+        elem.dataUrl = entry.options.dataUrl || '';
+      } else if (entry.type === 'text') {
         // Get current text from the editable span
-        const span = el.querySelector('.element-text');
-        element.value = span ? span.textContent : (options.value || '');
-        element.fontSize = options.fontSize || 12;
-        element.color = options.color || '#000000';
+        const textSpan = el.querySelector('.element-text');
+        elem.value = textSpan ? textSpan.textContent : (entry.options.value || '');
+        elem.fontSize = entry.options.fontSize || 12;
+        elem.color = entry.options.color || '#000000';
       }
 
-      result.push(element);
+      result.push(elem);
     }
 
     return result;
   }
 
-  function setupDrag(el, overlay) {
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    el.addEventListener('mousedown', (e) => {
-      // Ignore if clicking on delete button, resize handle, or editable text
-      if (e.target.classList.contains('delete-btn') ||
-          e.target.classList.contains('resize-handle') ||
-          e.target.classList.contains('element-text')) {
-        return;
-      }
-
-      isDragging = true;
-      offsetX = e.clientX - el.getBoundingClientRect().left + overlay.getBoundingClientRect().left;
-      offsetY = e.clientY - el.getBoundingClientRect().top + overlay.getBoundingClientRect().top;
-      el.classList.add('selected');
-      e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-
-      let newLeft = e.clientX - offsetX + overlay.scrollLeft;
-      let newTop = e.clientY - offsetY + overlay.scrollTop;
-
-      // Constrain within overlay bounds
-      const maxLeft = overlay.offsetWidth - el.offsetWidth;
-      const maxTop = overlay.offsetHeight - el.offsetHeight;
-      newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-      newTop = Math.max(0, Math.min(newTop, maxTop));
-
-      el.style.left = newLeft + 'px';
-      el.style.top = newTop + 'px';
-    });
-
-    document.addEventListener('mouseup', () => {
-      if (isDragging) {
-        isDragging = false;
-        el.classList.remove('selected');
-      }
-    });
+  /**
+   * Remove all placed elements.
+   */
+  function clearAll() {
+    for (const id of Object.keys(elements)) {
+      const entry = elements[id];
+      entry.el.remove();
+    }
+    for (const key of Object.keys(elements)) {
+      delete elements[key];
+    }
+    updateSignButton();
   }
 
-  function setupResize(el, handle, overlay) {
-    let isResizing = false;
-    let startX = 0;
-    let startY = 0;
-    let startWidth = 0;
-    let startHeight = 0;
+  // ===== Drag Implementation =====
 
-    handle.addEventListener('mousedown', (e) => {
-      isResizing = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      startWidth = el.offsetWidth;
-      startHeight = el.offsetHeight;
-      e.stopPropagation();
-      e.preventDefault();
-    });
+  function startDrag(id, e) {
+    const entry = elements[id];
+    if (!entry) return;
 
-    document.addEventListener('mousemove', (e) => {
-      if (!isResizing) return;
+    const el = entry.el;
+    const rect = el.getBoundingClientRect();
 
-      let newWidth = startWidth + (e.clientX - startX);
-      let newHeight = startHeight + (e.clientY - startY);
+    // Select element
+    deselectAll();
+    el.classList.add('selected');
 
-      // Minimum size
-      newWidth = Math.max(30, newWidth);
-      newHeight = Math.max(15, newHeight);
-
-      // Constrain within overlay
-      const elLeft = parseFloat(el.style.left) || 0;
-      const elTop = parseFloat(el.style.top) || 0;
-      newWidth = Math.min(newWidth, overlay.offsetWidth - elLeft);
-      newHeight = Math.min(newHeight, overlay.offsetHeight - elTop);
-
-      el.style.width = newWidth + 'px';
-      el.style.height = newHeight + 'px';
-    });
-
-    document.addEventListener('mouseup', () => {
-      if (isResizing) {
-        isResizing = false;
-      }
-    });
+    dragState = {
+      id,
+      el,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+      overlay: el.parentElement
+    };
   }
 
-  function dispatchChangeEvent() {
-    document.dispatchEvent(new CustomEvent('placement-changed', {
-      detail: { count: elements.size },
-    }));
+  function onMouseMove(e) {
+    if (dragState) {
+      handleDrag(e);
+    } else if (resizeState) {
+      handleResize(e);
+    }
   }
 
+  function handleDrag(e) {
+    const { el, offsetX, offsetY, overlay } = dragState;
+    const overlayRect = overlay.getBoundingClientRect();
+
+    let left = e.clientX - overlayRect.left - offsetX;
+    let top = e.clientY - overlayRect.top - offsetY;
+
+    // Constrain within overlay bounds
+    const maxLeft = overlayRect.width - el.offsetWidth;
+    const maxTop = overlayRect.height - el.offsetHeight;
+    left = Math.max(0, Math.min(left, maxLeft));
+    top = Math.max(0, Math.min(top, maxTop));
+
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+  }
+
+  function onMouseUp() {
+    dragState = null;
+    resizeState = null;
+  }
+
+  // ===== Resize Implementation =====
+
+  function startResize(id, e) {
+    const entry = elements[id];
+    if (!entry) return;
+
+    const el = entry.el;
+
+    // Select element
+    deselectAll();
+    el.classList.add('selected');
+
+    resizeState = {
+      id,
+      el,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: el.offsetWidth,
+      startHeight: el.offsetHeight,
+      overlay: el.parentElement
+    };
+  }
+
+  function handleResize(e) {
+    const { el, startX, startY, startWidth, startHeight, overlay } = resizeState;
+    const overlayRect = overlay.getBoundingClientRect();
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    // Minimum size 30x15
+    let newWidth = Math.max(30, startWidth + dx);
+    let newHeight = Math.max(15, startHeight + dy);
+
+    // Constrain within overlay
+    const left = parseFloat(el.style.left) || 0;
+    const top = parseFloat(el.style.top) || 0;
+    newWidth = Math.min(newWidth, overlayRect.width - left);
+    newHeight = Math.min(newHeight, overlayRect.height - top);
+
+    el.style.width = newWidth + 'px';
+    el.style.height = newHeight + 'px';
+  }
+
+  // ===== Helpers =====
+
+  function getPageOverlay(pageIndex) {
+    const pageWrapper = document.querySelector('.pdf-page[data-page-index="' + pageIndex + '"]');
+    if (!pageWrapper) return null;
+    return pageWrapper.querySelector('.page-overlay');
+  }
+
+  function deselectAll() {
+    const selected = document.querySelectorAll('.placed-element.selected');
+    for (let i = 0; i < selected.length; i++) {
+      selected[i].classList.remove('selected');
+    }
+  }
+
+  function updateSignButton() {
+    const btn = document.getElementById('sign-save-btn');
+    if (!btn) return;
+    btn.disabled = Object.keys(elements).length === 0;
+  }
+
+  // Expose on window
   window.Placement = {
     init,
     addElement,
     removeElement,
     getElements,
-    clearAll,
+    clearAll
   };
 })();

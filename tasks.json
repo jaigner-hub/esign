@@ -125,7 +125,7 @@
       "getElements() conversion: for each element, compute pdfX = elementLeft / scale, pdfY = (pageHeightPx - elementTop - elementHeight) / scale (flips Y axis for PDF bottom-left origin)",
       "Verify: test -f renderer/js/placement.js && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/js/placement.js','utf8'); console.log(c.includes('addElement') && c.includes('getElements') && c.includes('removeElement') ? 'ok' : 'fail')\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 11,

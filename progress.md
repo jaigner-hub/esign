@@ -94,3 +94,15 @@
 - Each page wrapper has data-page-index attribute for element placement targeting
 - pdf.js worker configured in index.html via ES module import (already done in Task 7)
 - Verification passes: file exists and contains pdfjsLib, renderAllPages, getScale
+
+### Task 10 — Implement placement engine for drag-and-drop elements (2026-02-14)
+- Created renderer/js/placement.js exposing window.Placement
+- Implements init(), addElement(pageIndex, type, options), removeElement(id), getElements(), clearAll()
+- Each placed element div gets: unique id, class 'placed-element', X delete button (top-right), resize handle (bottom-right)
+- Signature elements render as <img>, text elements render as contentEditable <span>
+- Mouse-based drag: mousedown on element starts drag (tracks offset), mousemove updates CSS left/top, mouseup ends; constrained within page overlay bounds
+- Mouse-based resize: mousedown on resize handle, mousemove updates width/height, mouseup ends; minimum size 30x15px, constrained to overlay
+- getElements() converts from screen pixels to PDF points: pdfX = elementLeft / scale, pdfY = (pageHeightPx - elementTop - elementHeight) / scale (flips Y axis for PDF bottom-left origin)
+- Uses correct per-page dimensions from PdfViewer.getPageDimensions() for coordinate conversion
+- Auto-enables/disables "Sign & Save" button based on element count
+- Verification passes: file exists and contains addElement, getElements, removeElement
