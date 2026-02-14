@@ -120,3 +120,16 @@
 - getCurrentPageIndex() helper determines the most visible page in the viewer for placement
 - Includes toast notifications for user feedback (name validation, render errors, placement confirmation)
 - Verification passes: file contains renderSignature, fontIndex, and addElement
+
+### Task 12 — Build text field creation panel in the sidebar (2026-02-14)
+- Created renderer/js/text-panel.js exposing window.TextPanel with init(containerEl) method
+- Panel UI built dynamically inside the container:
+  - Text input for field value (placeholder "Enter date, name, etc.")
+  - Quick-insert buttons: "Today (MM/DD/YYYY)" and "Today (ISO)" that fill input with current date
+  - Font size number input (range 8-36, default 12)
+  - Color input (default #000000)
+  - "Add to Document" button (disabled until text is entered) that calls Placement.addElement() with text data
+- getCurrentPageIndex() helper determines the most visible page in the viewer for placement
+- Includes input validation (non-empty text, font size range) and toast notifications for user feedback
+- Follows same patterns as signature-panel.js (IIFE, window exposure, toast helper)
+- Verification passes: file contains addElement, text, and fontSize

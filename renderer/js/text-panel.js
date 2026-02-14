@@ -1,110 +1,182 @@
-/* Text Panel - text field creation UI */
+/**
+ * Text field creation panel — text input, date shortcuts, and placement
+ * Exposes window.TextPanel
+ */
 (function () {
   'use strict';
 
   let containerEl = null;
+  let textInput = null;
+  let fontSizeInput = null;
+  let colorInput = null;
+  let addBtn = null;
 
+  /**
+   * Initialize the text panel UI inside the given container.
+   * @param {HTMLElement} el - The container element
+   */
   function init(el) {
     containerEl = el;
-    buildUI();
-  }
 
-  function buildUI() {
-    const html = `
-      <label for="text-value">Text</label>
-      <input type="text" id="text-value" placeholder="Enter date, name, etc.">
+    // Text input
+    const textLabel = document.createElement('label');
+    textLabel.textContent = 'Text Value';
+    containerEl.appendChild(textLabel);
 
-      <div class="quick-insert-row">
-        <button class="btn" id="text-date-mmddyyyy">Today (MM/DD/YYYY)</button>
-        <button class="btn" id="text-date-iso">Today (ISO)</button>
-      </div>
+    textInput = document.createElement('input');
+    textInput.type = 'text';
+    textInput.placeholder = 'Enter date, name, etc.';
+    textInput.addEventListener('input', onInputChange);
+    containerEl.appendChild(textInput);
 
-      <label for="text-font-size">Font Size</label>
-      <input type="number" id="text-font-size" min="8" max="36" value="12">
+    // Quick-insert buttons
+    const quickLabel = document.createElement('label');
+    quickLabel.textContent = 'Quick Insert';
+    containerEl.appendChild(quickLabel);
 
-      <label for="text-color">Color</label>
-      <input type="color" id="text-color" value="#000000">
+    const quickBtns = document.createElement('div');
+    quickBtns.className = 'quick-insert-buttons';
 
-      <button class="btn btn-primary" id="text-add-btn">Add to Document</button>
-    `;
-
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = html;
-    containerEl.appendChild(wrapper);
-
-    // Quick insert: MM/DD/YYYY
-    document.getElementById('text-date-mmddyyyy').addEventListener('click', () => {
+    const todayMDY = document.createElement('button');
+    todayMDY.className = 'btn-secondary';
+    todayMDY.textContent = 'Today (MM/DD/YYYY)';
+    todayMDY.addEventListener('click', function () {
       const now = new Date();
       const mm = String(now.getMonth() + 1).padStart(2, '0');
       const dd = String(now.getDate()).padStart(2, '0');
       const yyyy = now.getFullYear();
-      document.getElementById('text-value').value = `${mm}/${dd}/${yyyy}`;
+      textInput.value = mm + '/' + dd + '/' + yyyy;
+      onInputChange();
     });
+    quickBtns.appendChild(todayMDY);
 
-    // Quick insert: ISO date
-    document.getElementById('text-date-iso').addEventListener('click', () => {
+    const todayISO = document.createElement('button');
+    todayISO.className = 'btn-secondary';
+    todayISO.textContent = 'Today (ISO)';
+    todayISO.addEventListener('click', function () {
       const now = new Date();
-      document.getElementById('text-value').value = now.toISOString().split('T')[0];
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      textInput.value = yyyy + '-' + mm + '-' + dd;
+      onInputChange();
     });
+    quickBtns.appendChild(todayISO);
 
-    // Add to document
-    document.getElementById('text-add-btn').addEventListener('click', handleAdd);
+    containerEl.appendChild(quickBtns);
+
+    // Font size
+    const sizeLabel = document.createElement('label');
+    sizeLabel.textContent = 'Font Size';
+    containerEl.appendChild(sizeLabel);
+
+    fontSizeInput = document.createElement('input');
+    fontSizeInput.type = 'number';
+    fontSizeInput.min = '8';
+    fontSizeInput.max = '36';
+    fontSizeInput.value = '12';
+    containerEl.appendChild(fontSizeInput);
+
+    // Color input
+    const colorLabel = document.createElement('label');
+    colorLabel.textContent = 'Color';
+    containerEl.appendChild(colorLabel);
+
+    colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = '#000000';
+    containerEl.appendChild(colorInput);
+
+    // Add to Document button
+    const actions = document.createElement('div');
+    actions.className = 'panel-actions';
+
+    addBtn = document.createElement('button');
+    addBtn.className = 'btn-primary';
+    addBtn.textContent = 'Add to Document';
+    addBtn.disabled = true;
+    addBtn.addEventListener('click', onAddToDocument);
+    actions.appendChild(addBtn);
+
+    containerEl.appendChild(actions);
   }
 
-  function handleAdd() {
-    const value = document.getElementById('text-value').value.trim();
+  function onInputChange() {
+    const value = textInput.value.trim();
+    addBtn.disabled = !value;
+  }
+
+  function onAddToDocument() {
+    const value = textInput.value.trim();
     if (!value) {
-      showToast('Please enter some text', 'error');
+      showToast('Please enter text', 'error');
       return;
     }
 
-    const fontSize = parseInt(document.getElementById('text-font-size').value, 10) || 12;
-    const color = document.getElementById('text-color').value;
+    const fontSize = parseInt(fontSizeInput.value, 10);
+    if (isNaN(fontSize) || fontSize < 8 || fontSize > 36) {
+      showToast('Font size must be between 8 and 36', 'error');
+      return;
+    }
 
-    const currentPage = getCurrentPageIndex();
+    const currentPageIndex = getCurrentPageIndex();
 
-    window.Placement.addElement(currentPage, 'text', {
-      value,
-      fontSize,
-      color,
+    window.Placement.addElement(currentPageIndex, 'text', {
+      value: value,
+      fontSize: fontSize,
+      color: colorInput.value
     });
+
+    showToast('Text added to page ' + (currentPageIndex + 1), 'success');
   }
 
+  /**
+   * Get the index of the currently most-visible page in the viewer.
+   */
   function getCurrentPageIndex() {
+    const viewerArea = document.getElementById('viewer-area');
+    if (!viewerArea) return 0;
+
     const pages = document.querySelectorAll('.pdf-page');
-    const container = document.getElementById('viewer-container');
-    if (!container || pages.length === 0) return 0;
+    if (pages.length === 0) return 0;
 
-    const containerRect = container.getBoundingClientRect();
-    const containerMid = containerRect.top + containerRect.height / 2;
-
-    let closestIdx = 0;
+    const viewerRect = viewerArea.getBoundingClientRect();
+    const viewerCenter = viewerRect.top + viewerRect.height / 2;
+    let closestIndex = 0;
     let closestDist = Infinity;
 
-    pages.forEach((page, idx) => {
-      const rect = page.getBoundingClientRect();
-      const pageMid = rect.top + rect.height / 2;
-      const dist = Math.abs(pageMid - containerMid);
+    for (let i = 0; i < pages.length; i++) {
+      const pageRect = pages[i].getBoundingClientRect();
+      const pageCenter = pageRect.top + pageRect.height / 2;
+      const dist = Math.abs(pageCenter - viewerCenter);
       if (dist < closestDist) {
         closestDist = dist;
-        closestIdx = idx;
+        closestIndex = i;
       }
-    });
+    }
 
-    return closestIdx;
+    return closestIndex;
   }
 
   function showToast(message, type) {
     const container = document.getElementById('toast-container');
     if (!container) return;
+
     const toast = document.createElement('div');
     toast.className = 'toast ' + (type || 'info');
     toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+
+    setTimeout(function () {
+      toast.classList.add('fade-out');
+      setTimeout(function () {
+        toast.remove();
+      }, 300);
+    }, 3000);
   }
 
+  // Expose on window
   window.TextPanel = {
-    init,
+    init
   };
 })();

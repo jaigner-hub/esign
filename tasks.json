@@ -148,7 +148,7 @@
       "Panel UI contains: a text input for the field value (placeholder 'Enter date, name, etc.'), quick-insert buttons: 'Today (MM/DD/YYYY)' and 'Today (ISO)' that fill the input with the current date in the respective format, a font size selector (dropdown or number input, range 8-36, default 12), a color input (default #000000), and an 'Add to Document' button that calls Placement.addElement(currentPageIndex, 'text', { value, fontSize, color })",
       "Verify: test -f renderer/js/text-panel.js && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/js/text-panel.js','utf8'); console.log(c.includes('addElement') && c.includes('text') && c.includes('fontSize') ? 'ok' : 'fail')\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 13,
