@@ -203,7 +203,7 @@
       "In renderer/js/placement.js: getElements() should use the correct page dimensions for each element's page when converting coordinates.",
       "Verify: node -e \"const fs = require('fs'); const {signPdf} = require('./main/lib/pdf-signer'); const pdf = fs.readFileSync('./test/fixtures/multipage.pdf'); signPdf(pdf, [{type:'text', page:0, x:100, y:100, width:200, height:20, value:'Page 1', fontSize:12, color:'#000000'}, {type:'text', page:2, x:100, y:100, width:200, height:20, value:'Page 3', fontSize:12, color:'#000000'}]).then(buf => console.log(buf.length > 0 ? 'ok' : 'fail'))\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 17,

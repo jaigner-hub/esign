@@ -172,3 +172,15 @@
 - Error handling in renderer app.js was already complete (all electronAPI calls wrapped in try/catch with toast messages)
 - Extracted validation functions (validateSignatureOpts, validateElement) for clean code organization
 - Verification passes: ipc-handlers.js contains throw and fontIndex validation
+
+### Task 16 — Handle multi-page PDFs and coordinate edge cases (2026-02-14)
+- Updated test/fixtures/generate-pdfs.js to also generate multipage.pdf with 3 pages of different sizes:
+  - Page 1: US Letter (612 x 792 points)
+  - Page 2: A4 (595.28 x 841.89 points)
+  - Page 3: US Legal (612 x 1008 points)
+- Generated multipage.pdf fixture successfully
+- Verified pdf-signer.js correctly handles elements on different pages — uses `pages[pageIndex]` and `page.getSize()` per-page (already implemented correctly)
+- Verified pdf-viewer.js getPageDimensions(pageIndex) returns correct per-page dimensions from the `pageDimensions` array (already implemented correctly)
+- Verified placement.js getElements() uses per-page dimensions from PdfViewer.getPageDimensions(pageIndex) for coordinate conversion (already implemented correctly)
+- Tested signing multipage.pdf with text on all three pages — output is valid PDF with correct page dimensions preserved
+- Verification passes: signing multipage.pdf with elements on pages 0 and 2 returns valid output
