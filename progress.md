@@ -56,3 +56,10 @@
 - Uses pdfjsLib.getDocument, renders all pages as canvases with overlay divs
 - Stores per-page dimensions in PDF points, calculates scale to fit max 800px width
 - All verification steps passed
+
+### Iteration 10 — Task 10: Implement placement engine
+- Created renderer/js/placement.js with Placement module
+- addElement creates draggable/resizable divs with delete buttons and resize handles
+- Mouse-based drag constrained to overlay, resize with min 30x15
+- getElements() converts screen pixels to PDF points (Y-axis flip)
+- All verification steps passed
