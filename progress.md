@@ -56,3 +56,17 @@
 - All handlers wrapped in try/catch with descriptive error messages
 - main.js already calls registerHandlers(mainWindow) from Task 5
 - Verification passes: all 4 IPC channel names present in the file
+
+### Task 7 — Create the main HTML page with layout structure (2026-02-14)
+- Created renderer/index.html with full application layout:
+  - Header bar with 'esign' branding and 'Open PDF' button
+  - Drop zone with drag-and-drop area and file picker button (visible when no PDF loaded)
+  - Main workspace (hidden until PDF loaded) with left sidebar (signature panel + text panel containers) and center scrollable PDF viewer area
+  - Bottom action bar with 'Sign & Save' button (disabled until elements placed)
+  - Loading overlay with spinner for processing state
+  - Toast container for error/success messages
+- Configured pdf.js: inline ES module imports pdfjs-dist, sets workerSrc to local pdf.worker.min.mjs, exposes pdfjsLib globally via window, dispatches 'pdfjsReady' event for app initialization
+- Included all renderer JS scripts in correct order: pdf-viewer.js, placement.js, signature-panel.js, text-panel.js, app.js (last)
+- Linked css/style.css stylesheet
+- Added Content-Security-Policy meta tag for security
+- Verification passes: file exists and contains app.js, pdf-viewer.js, and style.css references
