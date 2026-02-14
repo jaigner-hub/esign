@@ -9,3 +9,11 @@
 - Downgraded chai from v6 (ESM-only) to v4 for CommonJS compatibility with mocha tests
 - Downgraded pdfjs-dist from v5 to v4 to match project conventions
 - Both verification steps pass: package.json check and directory listing
+
+### Task 2 — Download and bundle the 6 handwriting fonts (2026-02-14)
+- Created assets/fonts/download-fonts.sh to download 6 Google Fonts from google/fonts GitHub repo
+- DancingScript and Caveat only available as variable fonts in the repo; downloaded variable TTFs and renamed to -Regular.ttf (work fine with @napi-rs/canvas)
+- HomemadeApple is under apache/ license directory, not ofl/
+- All 6 fonts downloaded successfully: DancingScript, GreatVibes, Caveat, Sacramento, Pacifico, HomemadeApple
+- Created main/lib/font-loader.js with FONTS array (6 entries) and loadFontBuffer(fontIndex) function
+- Both verification steps pass: FONTS.length === 6 and 6 .ttf files in assets/fonts/

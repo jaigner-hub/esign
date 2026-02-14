@@ -1,27 +1,31 @@
-#!/bin/bash
-# Download the 6 Google Fonts TTF files from the google/fonts GitHub repo
-# Note: Can also be run via: node assets/fonts/download-fonts.js
+#!/usr/bin/env bash
+# Downloads the 6 bundled handwriting fonts from the google/fonts GitHub repo.
+set -euo pipefail
 
-FONT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_URL="https://raw.githubusercontent.com/google/fonts/main"
 
-declare -A FONTS
-FONTS["DancingScript-Regular.ttf"]="ofl/dancingscript/DancingScript%5Bwght%5D.ttf"
-FONTS["GreatVibes-Regular.ttf"]="ofl/greatvibes/GreatVibes-Regular.ttf"
-FONTS["Caveat-Regular.ttf"]="ofl/caveat/Caveat%5Bwght%5D.ttf"
-FONTS["Sacramento-Regular.ttf"]="ofl/sacramento/Sacramento-Regular.ttf"
-FONTS["Pacifico-Regular.ttf"]="ofl/pacifico/Pacifico-Regular.ttf"
-FONTS["HomemadeApple-Regular.ttf"]="apache/homemadeapple/HomemadeApple-Regular.ttf"
+# Some fonts are now variable-weight only in the Google repo.
+# We download the variable font TTF and rename to -Regular.ttf.
+# They work fine as standard TTFs with @napi-rs/canvas.
 
-for dest in "${!FONTS[@]}"; do
-  src="${FONTS[$dest]}"
-  url="${BASE_URL}/${src}"
-  echo "Downloading ${dest}..."
-  curl -fsSL -o "${FONT_DIR}/${dest}" "${url}"
-  if [ $? -ne 0 ]; then
-    echo "Failed to download ${dest}"
-    exit 1
-  fi
-done
+echo "Downloading DancingScript-Regular.ttf (variable font) ..."
+curl -fsSL "$BASE_URL/ofl/dancingscript/DancingScript%5Bwght%5D.ttf" -o "$SCRIPT_DIR/DancingScript-Regular.ttf"
 
-echo "All fonts downloaded successfully."
+echo "Downloading GreatVibes-Regular.ttf ..."
+curl -fsSL "$BASE_URL/ofl/greatvibes/GreatVibes-Regular.ttf" -o "$SCRIPT_DIR/GreatVibes-Regular.ttf"
+
+echo "Downloading Caveat-Regular.ttf (variable font) ..."
+curl -fsSL "$BASE_URL/ofl/caveat/Caveat%5Bwght%5D.ttf" -o "$SCRIPT_DIR/Caveat-Regular.ttf"
+
+echo "Downloading Sacramento-Regular.ttf ..."
+curl -fsSL "$BASE_URL/ofl/sacramento/Sacramento-Regular.ttf" -o "$SCRIPT_DIR/Sacramento-Regular.ttf"
+
+echo "Downloading Pacifico-Regular.ttf ..."
+curl -fsSL "$BASE_URL/ofl/pacifico/Pacifico-Regular.ttf" -o "$SCRIPT_DIR/Pacifico-Regular.ttf"
+
+echo "Downloading HomemadeApple-Regular.ttf ..."
+curl -fsSL "$BASE_URL/apache/homemadeapple/HomemadeApple-Regular.ttf" -o "$SCRIPT_DIR/HomemadeApple-Regular.ttf"
+
+echo "All 6 fonts downloaded."
+ls -la "$SCRIPT_DIR"/*.ttf
