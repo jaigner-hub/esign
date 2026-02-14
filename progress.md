@@ -63,3 +63,9 @@
 - Mouse-based drag constrained to overlay, resize with min 30x15
 - getElements() converts screen pixels to PDF points (Y-axis flip)
 - All verification steps passed
+
+### Iteration 11 — Task 11: Build signature panel
+- Created renderer/js/signature-panel.js with SignaturePanel module
+- Name input, 6 font preview boxes (live update), font size slider, color picker
+- Preview button calls electronAPI.renderSignature, Add button calls Placement.addElement
+- All verification steps passed
