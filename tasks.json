@@ -49,7 +49,7 @@
       "Create test/fixtures/sample.pdf by writing a small script (test/fixtures/generate-pdfs.js) that uses pdf-lib to create a 1-page PDF with placeholder text and saves it. Run this script.",
       "Verify: node -e \"const fs = require('fs'); const {signPdf} = require('./main/lib/pdf-signer'); const pdf = fs.readFileSync('./test/fixtures/sample.pdf'); signPdf(pdf, [{type:'text', page:0, x:100, y:700, width:200, height:20, value:'Hello', fontSize:12, color:'#000000'}]).then(buf => console.log(buf.length > 0 ? 'ok' : 'fail'))\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 5,

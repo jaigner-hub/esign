@@ -20,3 +20,10 @@
 - Registers fonts via GlobalFonts.registerFromPath, measures text, renders to transparent canvas
 - Returns { dataUrl, width, height } with PNG base64 data URL
 - All verification steps passed
+
+### Iteration 4 — Task 4: Build PDF signer module
+- Created main/lib/pdf-signer.js using pdf-lib
+- Handles signature elements (embed PNG from dataUrl) and text elements (Helvetica drawText)
+- Parses hex colors, clamps coordinates to page bounds
+- Created test/fixtures/generate-pdfs.js to generate sample.pdf and multipage.pdf
+- All verification steps passed
