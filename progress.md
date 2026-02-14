@@ -184,3 +184,15 @@
 - Verified placement.js getElements() uses per-page dimensions from PdfViewer.getPageDimensions(pageIndex) for coordinate conversion (already implemented correctly)
 - Tested signing multipage.pdf with text on all three pages — output is valid PDF with correct page dimensions preserved
 - Verification passes: signing multipage.pdf with elements on pages 0 and 2 returns valid output
+
+### Task 17 — Write unit/integration tests for backend modules (2026-02-14)
+- Created test/test-sign.js using mocha and chai with 7 test cases:
+  - signature-renderer: valid input returns { dataUrl, width, height } with correct types and values
+  - signature-renderer: empty name throws error with 'non-empty' message
+  - signature-renderer: each fontIndex 0-5 succeeds and returns valid PNG data URL
+  - pdf-signer: signPdf with sample.pdf and text element returns valid PDF with %PDF- header
+  - pdf-signer: signPdf with sample.pdf and pre-rendered signature element returns valid PDF
+  - pdf-signer: signPdf with multipage.pdf and elements (text + signature) on different pages succeeds
+  - pdf-signer: signPdf with out-of-range page index (999) clamps without error
+- Used chai `.include()` instead of `.startsWith()` for compatibility with chai v4
+- All 7 tests pass: `npx mocha test/test-sign.js --timeout 15000`
