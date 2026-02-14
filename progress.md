@@ -196,3 +196,14 @@
   - pdf-signer: signPdf with out-of-range page index (999) clamps without error
 - Used chai `.include()` instead of `.startsWith()` for compatibility with chai v4
 - All 7 tests pass: `npx mocha test/test-sign.js --timeout 15000`
+
+### Task 18 — Write end-to-end test script (2026-02-14)
+- Created test/e2e-test.sh — a comprehensive bash script exercising the full signing pipeline
+- Script has 3 stages:
+  1. Generates PDF fixtures via test/fixtures/generate-pdfs.js (sample.pdf and multipage.pdf)
+  2. Runs all mocha unit/integration tests (7 tests passing)
+  3. Full pipeline test: loads sample.pdf → renders signature (font index 3, Sacramento) → signs PDF with both a signature element and a text element → writes output to test/fixtures/output-signed.pdf → verifies %PDF- header and that output is larger than input
+- Cleanup trap removes output-signed.pdf on exit
+- Made script executable with chmod +x
+- Uses set -euo pipefail for strict error handling
+- All 3 stages pass successfully: `bash test/e2e-test.sh`
