@@ -137,7 +137,7 @@
       "The font preview grid should update live as the user types their name",
       "Verify: test -f renderer/js/signature-panel.js && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/js/signature-panel.js','utf8'); console.log(c.includes('renderSignature') && c.includes('fontIndex') && c.includes('addElement') ? 'ok' : 'fail')\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 12,

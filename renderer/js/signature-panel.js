@@ -1,182 +1,266 @@
-/* Signature Panel - signature creation UI */
+/**
+ * Signature creation panel — font selection, preview, and placement
+ * Exposes window.SignaturePanel
+ */
 (function () {
   'use strict';
 
   const FONT_FAMILIES = [
-    { css: "'Dancing Script', cursive", label: 'Dancing Script' },
-    { css: "'Great Vibes', cursive", label: 'Great Vibes' },
-    { css: "'Caveat', cursive", label: 'Caveat' },
-    { css: "'Sacramento', cursive", label: 'Sacramento' },
-    { css: "'Pacifico', cursive", label: 'Pacifico' },
-    { css: "'Homemade Apple', cursive", label: 'Homemade Apple' },
+    { name: 'Dancing Script', css: "'Dancing Script', cursive" },
+    { name: 'Great Vibes', css: "'Great Vibes', cursive" },
+    { name: 'Caveat', css: "'Caveat', cursive" },
+    { name: 'Sacramento', css: "'Sacramento', cursive" },
+    { name: 'Pacifico', css: "'Pacifico', cursive" },
+    { name: 'Homemade Apple', css: "'Homemade Apple', cursive" }
   ];
 
   let containerEl = null;
+  let nameInput = null;
+  let fontSizeSlider = null;
+  let fontSizeLabel = null;
+  let colorInput = null;
+  let previewBtn = null;
+  let addBtn = null;
+  let previewArea = null;
   let selectedFontIndex = 0;
-  let previewResult = null; // { dataUrl, width, height }
+  let fontBoxes = [];
+  let lastPreview = null; // { dataUrl, width, height }
 
+  /**
+   * Initialize the signature panel UI inside the given container.
+   * @param {HTMLElement} el - The container element
+   */
   function init(el) {
     containerEl = el;
-    buildUI();
-  }
+    lastPreview = null;
 
-  function buildUI() {
-    const html = `
-      <label for="sig-name">Your Name</label>
-      <input type="text" id="sig-name" placeholder="Type your name..." maxlength="200">
+    // Name input
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = 'Your Name';
+    containerEl.appendChild(nameLabel);
 
-      <label>Font Style</label>
-      <div class="font-preview-grid" id="sig-font-grid"></div>
+    nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = 'Type your name';
+    nameInput.addEventListener('input', onNameChange);
+    containerEl.appendChild(nameInput);
 
-      <label for="sig-font-size">Font Size: <span id="sig-font-size-val">48</span></label>
-      <input type="range" id="sig-font-size" min="24" max="72" value="48">
+    // Font preview grid
+    const fontLabel = document.createElement('label');
+    fontLabel.textContent = 'Font Style';
+    containerEl.appendChild(fontLabel);
 
-      <label for="sig-color">Color</label>
-      <input type="color" id="sig-color" value="#000000">
+    const grid = document.createElement('div');
+    grid.className = 'font-preview-grid';
+    fontBoxes = [];
 
-      <button class="btn btn-primary" id="sig-preview-btn">Preview</button>
-
-      <div class="signature-preview" id="sig-preview-area">
-        <span style="color:#999; font-size:12px;">Preview will appear here</span>
-      </div>
-
-      <button class="btn btn-primary" id="sig-add-btn" disabled>Add to Document</button>
-    `;
-
-    // Append after the h3
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = html;
-    containerEl.appendChild(wrapper);
-
-    // Build font grid
-    const fontGrid = document.getElementById('sig-font-grid');
-    FONT_FAMILIES.forEach((font, idx) => {
+    for (let i = 0; i < FONT_FAMILIES.length; i++) {
       const box = document.createElement('div');
-      box.className = 'font-preview-box' + (idx === 0 ? ' selected' : '');
-      box.style.fontFamily = font.css;
-      box.textContent = 'Signature';
-      box.dataset.fontIndex = idx;
-      box.title = font.label;
-      box.addEventListener('click', () => {
-        document.querySelectorAll('.font-preview-box').forEach(b => b.classList.remove('selected'));
+      box.className = 'font-preview-box';
+      if (i === selectedFontIndex) {
         box.classList.add('selected');
-        selectedFontIndex = idx;
-        previewResult = null;
-        document.getElementById('sig-add-btn').disabled = true;
+      }
+      box.style.fontFamily = FONT_FAMILIES[i].css;
+      box.textContent = 'Signature';
+      box.dataset.fontIndex = i;
+      box.addEventListener('click', function () {
+        selectFont(i);
       });
-      fontGrid.appendChild(box);
-    });
+      grid.appendChild(box);
+      fontBoxes.push(box);
+    }
 
-    // Live update font previews as user types
-    const nameInput = document.getElementById('sig-name');
-    nameInput.addEventListener('input', () => {
-      const name = nameInput.value || 'Signature';
-      document.querySelectorAll('.font-preview-box').forEach(box => {
-        box.textContent = name;
-      });
-      previewResult = null;
-      document.getElementById('sig-add-btn').disabled = true;
-    });
+    containerEl.appendChild(grid);
 
     // Font size slider
-    const fontSizeSlider = document.getElementById('sig-font-size');
-    fontSizeSlider.addEventListener('input', () => {
-      document.getElementById('sig-font-size-val').textContent = fontSizeSlider.value;
-      previewResult = null;
-      document.getElementById('sig-add-btn').disabled = true;
+    const sizeLabel = document.createElement('label');
+    fontSizeLabel = document.createElement('span');
+    fontSizeLabel.textContent = '48';
+    sizeLabel.textContent = 'Font Size: ';
+    sizeLabel.appendChild(fontSizeLabel);
+    containerEl.appendChild(sizeLabel);
+
+    fontSizeSlider = document.createElement('input');
+    fontSizeSlider.type = 'range';
+    fontSizeSlider.min = '24';
+    fontSizeSlider.max = '72';
+    fontSizeSlider.value = '48';
+    fontSizeSlider.addEventListener('input', function () {
+      fontSizeLabel.textContent = fontSizeSlider.value;
+      clearPreview();
     });
+    containerEl.appendChild(fontSizeSlider);
 
-    // Preview button
-    document.getElementById('sig-preview-btn').addEventListener('click', handlePreview);
+    // Color input
+    const colorLabel = document.createElement('label');
+    colorLabel.textContent = 'Color';
+    containerEl.appendChild(colorLabel);
 
-    // Add to document button
-    document.getElementById('sig-add-btn').addEventListener('click', handleAdd);
+    colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = '#000000';
+    colorInput.addEventListener('input', function () {
+      clearPreview();
+    });
+    containerEl.appendChild(colorInput);
+
+    // Preview area
+    previewArea = document.createElement('div');
+    previewArea.className = 'signature-preview';
+    previewArea.innerHTML = '<span style="color:#999;font-size:12px;">Preview will appear here</span>';
+    containerEl.appendChild(previewArea);
+
+    // Action buttons
+    const actions = document.createElement('div');
+    actions.className = 'panel-actions';
+
+    previewBtn = document.createElement('button');
+    previewBtn.className = 'btn-secondary';
+    previewBtn.textContent = 'Preview';
+    previewBtn.addEventListener('click', onPreview);
+    actions.appendChild(previewBtn);
+
+    addBtn = document.createElement('button');
+    addBtn.className = 'btn-primary';
+    addBtn.textContent = 'Add to Document';
+    addBtn.disabled = true;
+    addBtn.addEventListener('click', onAddToDocument);
+    actions.appendChild(addBtn);
+
+    containerEl.appendChild(actions);
   }
 
-  async function handlePreview() {
-    const name = document.getElementById('sig-name').value.trim();
+  function selectFont(index) {
+    selectedFontIndex = index;
+    for (let i = 0; i < fontBoxes.length; i++) {
+      fontBoxes[i].classList.toggle('selected', i === index);
+    }
+    clearPreview();
+  }
+
+  function onNameChange() {
+    const name = nameInput.value.trim();
+    // Update font preview boxes with the typed name
+    for (let i = 0; i < fontBoxes.length; i++) {
+      fontBoxes[i].textContent = name || 'Signature';
+    }
+    clearPreview();
+  }
+
+  function clearPreview() {
+    lastPreview = null;
+    addBtn.disabled = true;
+    previewArea.innerHTML = '<span style="color:#999;font-size:12px;">Preview will appear here</span>';
+  }
+
+  async function onPreview() {
+    const name = nameInput.value.trim();
     if (!name) {
       showToast('Please enter your name', 'error');
       return;
     }
 
-    const fontSize = parseInt(document.getElementById('sig-font-size').value, 10);
-    const color = document.getElementById('sig-color').value;
+    const opts = {
+      name: name,
+      fontIndex: selectedFontIndex,
+      fontSize: parseInt(fontSizeSlider.value, 10),
+      color: colorInput.value
+    };
 
     try {
-      const result = await window.electronAPI.renderSignature({
-        name,
-        fontIndex: selectedFontIndex,
-        fontSize,
-        color,
-      });
+      previewBtn.disabled = true;
+      previewBtn.textContent = 'Rendering...';
 
-      previewResult = result;
-      const previewArea = document.getElementById('sig-preview-area');
-      previewArea.innerHTML = `<img src="${result.dataUrl}" alt="Signature preview">`;
-      document.getElementById('sig-add-btn').disabled = false;
+      const result = await window.electronAPI.renderSignature(opts);
+      lastPreview = result;
+
+      previewArea.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = result.dataUrl;
+      previewArea.appendChild(img);
+
+      addBtn.disabled = false;
     } catch (err) {
-      showToast('Failed to preview signature: ' + err.message, 'error');
+      showToast('Failed to render signature: ' + err.message, 'error');
+      clearPreview();
+    } finally {
+      previewBtn.disabled = false;
+      previewBtn.textContent = 'Preview';
     }
   }
 
-  function handleAdd() {
-    if (!previewResult) return;
+  function onAddToDocument() {
+    if (!lastPreview) return;
 
-    const name = document.getElementById('sig-name').value.trim();
-    const fontSize = parseInt(document.getElementById('sig-font-size').value, 10);
-    const color = document.getElementById('sig-color').value;
+    const name = nameInput.value.trim();
+    if (!name) {
+      showToast('Please enter your name', 'error');
+      return;
+    }
 
-    // Determine current visible page (default to 0)
-    const currentPage = getCurrentPageIndex();
+    // Determine current page (first visible page or page 0)
+    const currentPageIndex = getCurrentPageIndex();
 
-    window.Placement.addElement(currentPage, 'signature', {
-      dataUrl: previewResult.dataUrl,
-      width: previewResult.width,
-      height: previewResult.height,
-      name,
+    window.Placement.addElement(currentPageIndex, 'signature', {
+      dataUrl: lastPreview.dataUrl,
+      width: lastPreview.width,
+      height: lastPreview.height,
+      name: name,
       fontIndex: selectedFontIndex,
-      fontSize,
-      color,
+      fontSize: parseInt(fontSizeSlider.value, 10),
+      color: colorInput.value
     });
+
+    showToast('Signature added to page ' + (currentPageIndex + 1), 'success');
   }
 
+  /**
+   * Get the index of the currently most-visible page in the viewer.
+   */
   function getCurrentPageIndex() {
-    // Find the page most visible in the viewer
+    const viewerArea = document.getElementById('viewer-area');
+    if (!viewerArea) return 0;
+
     const pages = document.querySelectorAll('.pdf-page');
-    const container = document.getElementById('viewer-container');
-    if (!container || pages.length === 0) return 0;
+    if (pages.length === 0) return 0;
 
-    const containerRect = container.getBoundingClientRect();
-    const containerMid = containerRect.top + containerRect.height / 2;
-
-    let closestIdx = 0;
+    const viewerRect = viewerArea.getBoundingClientRect();
+    const viewerCenter = viewerRect.top + viewerRect.height / 2;
+    let closestIndex = 0;
     let closestDist = Infinity;
 
-    pages.forEach((page, idx) => {
-      const rect = page.getBoundingClientRect();
-      const pageMid = rect.top + rect.height / 2;
-      const dist = Math.abs(pageMid - containerMid);
+    for (let i = 0; i < pages.length; i++) {
+      const pageRect = pages[i].getBoundingClientRect();
+      const pageCenter = pageRect.top + pageRect.height / 2;
+      const dist = Math.abs(pageCenter - viewerCenter);
       if (dist < closestDist) {
         closestDist = dist;
-        closestIdx = idx;
+        closestIndex = i;
       }
-    });
+    }
 
-    return closestIdx;
+    return closestIndex;
   }
 
   function showToast(message, type) {
     const container = document.getElementById('toast-container');
     if (!container) return;
+
     const toast = document.createElement('div');
     toast.className = 'toast ' + (type || 'info');
     toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+
+    setTimeout(function () {
+      toast.classList.add('fade-out');
+      setTimeout(function () {
+        toast.remove();
+      }, 300);
+    }, 3000);
   }
 
+  // Expose on window
   window.SignaturePanel = {
-    init,
+    init
   };
 })();

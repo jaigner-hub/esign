@@ -1,3 +1,46 @@
+/* ===== Font Faces for Signature Preview ===== */
+@font-face {
+  font-family: 'Dancing Script';
+  src: url('../../assets/fonts/DancingScript-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Great Vibes';
+  src: url('../../assets/fonts/GreatVibes-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Caveat';
+  src: url('../../assets/fonts/Caveat-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Sacramento';
+  src: url('../../assets/fonts/Sacramento-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pacifico';
+  src: url('../../assets/fonts/Pacifico-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Homemade Apple';
+  src: url('../../assets/fonts/HomemadeApple-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 /* ===== Reset & Base ===== */
 *, *::before, *::after {
   box-sizing: border-box;

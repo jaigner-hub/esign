@@ -106,3 +106,17 @@
 - Uses correct per-page dimensions from PdfViewer.getPageDimensions() for coordinate conversion
 - Auto-enables/disables "Sign & Save" button based on element count
 - Verification passes: file exists and contains addElement, getElements, removeElement
+
+### Task 11 — Build signature creation panel in the sidebar (2026-02-14)
+- Created renderer/js/signature-panel.js exposing window.SignaturePanel with init(containerEl) method
+- Panel UI built dynamically inside the container:
+  - Text input for signer's name with live update of font preview boxes
+  - 6-font preview grid using CSS @font-face with local bundled .ttf files (no CDN needed)
+  - Font size slider (range 24-72, default 48) with live label update
+  - Color input (default #000000)
+  - Preview button that calls window.electronAPI.renderSignature() and displays result as image
+  - Add to Document button (enabled only after preview) that calls Placement.addElement() with signature data
+- Added @font-face declarations to style.css for all 6 handwriting fonts (local paths to assets/fonts/)
+- getCurrentPageIndex() helper determines the most visible page in the viewer for placement
+- Includes toast notifications for user feedback (name validation, render errors, placement confirmation)
+- Verification passes: file contains renderSignature, fontIndex, and addElement
