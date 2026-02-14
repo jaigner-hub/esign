@@ -8,3 +8,9 @@
 - Installed runtime deps: pdf-lib, @napi-rs/canvas, pdfjs-dist
 - Installed dev deps: electron, electron-builder, mocha, chai
 - All verification steps passed
+
+### Iteration 2 — Task 2: Download and bundle the 6 handwriting fonts
+- Created download-fonts.sh and download-fonts.js scripts
+- Downloaded all 6 TTF files from google/fonts GitHub repo (HomemadeApple is under apache/ not ofl/)
+- Created main/lib/font-loader.js with FONTS array and loadFontBuffer()
+- All verification steps passed

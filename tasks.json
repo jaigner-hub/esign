@@ -24,7 +24,7 @@
       "Verify: node -e \"const fl = require('./main/lib/font-loader'); console.log(fl.FONTS.length === 6 ? 'ok' : 'fail')\"",
       "Verify: ls assets/fonts/*.ttf | wc -l"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 3,
