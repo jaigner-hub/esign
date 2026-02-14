@@ -24,7 +24,7 @@
       "Verify: node -e \"const fl = require('./main/lib/font-loader'); console.log(fl.FONTS.length === 6 ? 'ok' : 'fail')\"",
       "Verify: ls assets/fonts/*.ttf | wc -l"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 3,
@@ -36,7 +36,7 @@
       "Default fontSize=48, default color='#000000'. dataUrl should be a data:image/png;base64 string.",
       "Verify: node -e \"const sr = require('./main/lib/signature-renderer'); sr.renderSignature({name:'Test User', fontIndex:0, fontSize:48, color:'#000000'}).then(r => console.log(r.width > 0 && r.dataUrl.startsWith('data:image/png') ? 'ok' : 'fail'))\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 4,
@@ -49,7 +49,7 @@
       "Create test/fixtures/sample.pdf by writing a small script (test/fixtures/generate-pdfs.js) that uses pdf-lib to create a 1-page PDF with placeholder text and saves it. Run this script.",
       "Verify: node -e \"const fs = require('fs'); const {signPdf} = require('./main/lib/pdf-signer'); const pdf = fs.readFileSync('./test/fixtures/sample.pdf'); signPdf(pdf, [{type:'text', page:0, x:100, y:700, width:200, height:20, value:'Hello', fontSize:12, color:'#000000'}]).then(buf => console.log(buf.length > 0 ? 'ok' : 'fail'))\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 5,
@@ -60,7 +60,7 @@
       "Create main/preload.js: use contextBridge.exposeInMainWorld to expose an 'electronAPI' object with methods: renderSignature(opts) → ipcRenderer.invoke('render-signature', opts), signPdf(pdfBytes, elements) → ipcRenderer.invoke('sign-pdf', pdfBytes, elements), openFileDialog() → ipcRenderer.invoke('open-file-dialog'), saveFile(bytes, defaultName) → ipcRenderer.invoke('save-file', bytes, defaultName)",
       "Verify: node -e \"const fs = require('fs'); const m = fs.readFileSync('main/main.js','utf8'); const p = fs.readFileSync('main/preload.js','utf8'); console.log(m.includes('BrowserWindow') && p.includes('contextBridge') ? 'ok' : 'fail')\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 6,
@@ -75,7 +75,7 @@
       "Call registerHandlers(mainWindow) from main.js after window creation",
       "Verify: node -e \"const fs = require('fs'); const content = fs.readFileSync('main/ipc-handlers.js','utf8'); console.log(content.includes('render-signature') && content.includes('sign-pdf') && content.includes('open-file-dialog') && content.includes('save-file') ? 'ok' : 'fail')\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 7,
@@ -88,7 +88,7 @@
       "Configure pdf.js workerSrc to point to the local pdfjs-dist worker file",
       "Verify: test -f renderer/index.html && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/index.html','utf8'); console.log(c.includes('app.js') && c.includes('pdf-viewer.js') && c.includes('style.css') ? 'ok' : 'fail')\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 8,
@@ -99,7 +99,7 @@
       "Use a clean modern design: #1a1a2e header, #f5f5f5 background, #4361ee accent color for buttons",
       "Verify: test -f renderer/css/style.css && echo 'ok'"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 9,
@@ -111,7 +111,7 @@
       "Handle the pdf.js worker by setting pdfjsLib.GlobalWorkerOptions.workerSrc to the local pdfjs-dist worker path (use a require.resolve or relative path to node_modules/pdfjs-dist/build/pdf.worker.min.mjs)",
       "Verify: test -f renderer/js/pdf-viewer.js && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/js/pdf-viewer.js','utf8'); console.log(c.includes('pdfjsLib') && c.includes('renderAllPages') && c.includes('getScale') ? 'ok' : 'fail')\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 10,
@@ -125,7 +125,7 @@
       "getElements() conversion: for each element, compute pdfX = elementLeft / scale, pdfY = (pageHeightPx - elementTop - elementHeight) / scale (flips Y axis for PDF bottom-left origin)",
       "Verify: test -f renderer/js/placement.js && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/js/placement.js','utf8'); console.log(c.includes('addElement') && c.includes('getElements') && c.includes('removeElement') ? 'ok' : 'fail')\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 11,
@@ -137,7 +137,7 @@
       "The font preview grid should update live as the user types their name",
       "Verify: test -f renderer/js/signature-panel.js && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/js/signature-panel.js','utf8'); console.log(c.includes('renderSignature') && c.includes('fontIndex') && c.includes('addElement') ? 'ok' : 'fail')\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 12,
@@ -148,7 +148,7 @@
       "Panel UI contains: a text input for the field value (placeholder 'Enter date, name, etc.'), quick-insert buttons: 'Today (MM/DD/YYYY)' and 'Today (ISO)' that fill the input with the current date in the respective format, a font size selector (dropdown or number input, range 8-36, default 12), a color input (default #000000), and an 'Add to Document' button that calls Placement.addElement(currentPageIndex, 'text', { value, fontSize, color })",
       "Verify: test -f renderer/js/text-panel.js && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/js/text-panel.js','utf8'); console.log(c.includes('addElement') && c.includes('text') && c.includes('fontSize') ? 'ok' : 'fail')\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 13,
@@ -164,7 +164,7 @@
       "Show a loading overlay during signing, show success/error toast messages",
       "Verify: test -f renderer/js/app.js && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/js/app.js','utf8'); console.log(c.includes('signPdf') && c.includes('openFileDialog') && c.includes('DOMContentLoaded') ? 'ok' : 'fail')\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 14,
@@ -176,7 +176,7 @@
       "Add a 'package' script to package.json: 'electron-builder' or 'electron-builder --config forge.config.js'",
       "Verify: node -e \"const fs = require('fs'); const pkg = require('./package.json'); const hasConfig = fs.existsSync('forge.config.js') || pkg.build; console.log(hasConfig && pkg.scripts.package ? 'ok' : 'fail')\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 15,
@@ -190,7 +190,7 @@
       "In renderer app.js: wrap all electronAPI calls in try/catch, show error toast to the user with the error message.",
       "Verify: node -e \"const fs = require('fs'); const c = fs.readFileSync('main/ipc-handlers.js','utf8'); console.log(c.includes('validation') || (c.includes('throw') && c.includes('fontIndex')) ? 'ok' : 'fail')\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 16,
@@ -203,7 +203,7 @@
       "In renderer/js/placement.js: getElements() should use the correct page dimensions for each element's page when converting coordinates.",
       "Verify: node -e \"const fs = require('fs'); const {signPdf} = require('./main/lib/pdf-signer'); const pdf = fs.readFileSync('./test/fixtures/multipage.pdf'); signPdf(pdf, [{type:'text', page:0, x:100, y:100, width:200, height:20, value:'Page 1', fontSize:12, color:'#000000'}, {type:'text', page:2, x:100, y:100, width:200, height:20, value:'Page 3', fontSize:12, color:'#000000'}]).then(buf => console.log(buf.length > 0 ? 'ok' : 'fail'))\""
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 17,
@@ -220,7 +220,7 @@
       "Test pdf-signer: signPdf with out-of-range page index clamps without error",
       "Verify: npx mocha test/test-sign.js --timeout 15000"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 18,
@@ -231,7 +231,7 @@
       "Make the script executable with chmod +x",
       "Verify: bash test/e2e-test.sh"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": 19,
@@ -245,6 +245,6 @@
       "Verify package.json is correct: node -e \"const pkg = require('./package.json'); console.log(pkg.name === 'esign' && pkg.main === 'main/main.js' && pkg.scripts.start && pkg.scripts.package ? 'ok' : 'fail')\"",
       "Verify: npx mocha test/test-sign.js --timeout 15000 && bash test/e2e-test.sh && echo 'ALL CHECKS PASSED'"
     ],
-    "passes": true
+    "passes": false
   }
 ]

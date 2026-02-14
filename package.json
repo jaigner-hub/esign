@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron .",
     "test": "mocha test/test-sign.js --timeout 10000",
-    "package": "electron-builder --config"
+    "package": "electron-builder --config forge.config.js"
   },
   "keywords": [
     "pdf",
@@ -17,10 +17,10 @@
   "dependencies": {
     "@napi-rs/canvas": "^0.1.92",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^5.4.624"
+    "pdfjs-dist": "^4.10.38"
   },
   "devDependencies": {
-    "chai": "^6.2.2",
+    "chai": "^4.5.0",
     "electron": "^40.4.1",
     "electron-builder": "^26.7.0",
     "mocha": "^11.7.5"
