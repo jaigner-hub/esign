@@ -1,0 +1,252 @@
+[
+  {
+    "id": 1,
+    "category": "foundation",
+    "description": "Initialize Node.js project with package.json and directory structure",
+    "steps": [
+      "Create package.json with name 'esign', version '1.0.0', main 'server/index.js', bin field pointing './bin/cli.js' to 'esign', and scripts: start, test",
+      "Create directory structure: bin/, server/, server/routes/, server/lib/, server/fonts/, public/, public/css/, public/js/, test/, test/fixtures/",
+      "Install dependencies: express, pdf-lib, @napi-rs/canvas, open (for opening browser), pdfjs-dist",
+      "Install dev dependencies: mocha, chai, supertest",
+      "Verify: node -e \"const pkg = require('./package.json'); console.log(pkg.name, pkg.bin)\"",
+      "Verify: ls bin server/routes server/lib server/fonts public/css public/js test/fixtures"
+    ],
+    "passes": false
+  },
+  {
+    "id": 2,
+    "category": "foundation",
+    "description": "Download and bundle handwriting fonts for signature rendering",
+    "steps": [
+      "Create a script server/fonts/download-fonts.sh that downloads the 6 Google Fonts TTF files: DancingScript-Regular.ttf, GreatVibes-Regular.ttf, Caveat-Regular.ttf, Sacramento-Regular.ttf, Pacifico-Regular.ttf, HomemadeApple-Regular.ttf from the Google Fonts GitHub repository (github.com/google/fonts)",
+      "Run the download script to fetch all 6 font files into server/fonts/",
+      "Create server/lib/font-loader.js that exports a FONTS array with objects {name, label, path} for each font, and a loadFont(fontPath) function that reads the .ttf file as a Buffer",
+      "Verify: node -e \"const fl = require('./server/lib/font-loader'); console.log(fl.FONTS.length === 6 ? 'ok' : 'fail')\"",
+      "Verify: ls server/fonts/*.ttf | wc -l"
+    ],
+    "passes": false
+  },
+  {
+    "id": 3,
+    "category": "foundation",
+    "description": "Build signature renderer module using @napi-rs/canvas",
+    "steps": [
+      "Create server/lib/signature-renderer.js that exports a renderSignature({ name, fontIndex, fontSize, color }) async function",
+      "The function loads the specified font from FONTS[fontIndex], registers it with @napi-rs/canvas, creates a transparent canvas, draws the name text, and returns { dataUrl, width, height }",
+      "Canvas height should be fontSize * 1.5, width should be measured from the text metrics plus padding",
+      "Default fontSize=48, default color='#000000'",
+      "Verify: node -e \"const sr = require('./server/lib/signature-renderer'); sr.renderSignature({name:'Test User', fontIndex:0, fontSize:48, color:'#000000'}).then(r => console.log(r.width > 0 && r.dataUrl.startsWith('data:image/png') ? 'ok' : 'fail'))\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 4,
+    "category": "foundation",
+    "description": "Build PDF signer module using pdf-lib",
+    "steps": [
+      "Create server/lib/pdf-signer.js that exports an async function signPdf(pdfBuffer, elements) which returns a Buffer of the modified PDF",
+      "For each element with type='signature': decode the signature dataUrl to PNG bytes, embed as image in the PDF page at the specified (x, y, width, height) coordinates using pdf-lib's embedPng and drawImage",
+      "For each element with type='text': draw the text value directly on the PDF page at (x, y) using pdf-lib's drawText with Helvetica font at the specified fontSize and color",
+      "Handle coordinate conversion: elements use bottom-left origin (PDF native coordinates), so coordinates can be passed directly to pdf-lib",
+      "Create test/fixtures/sample.pdf — generate a simple 1-page PDF using pdf-lib with some placeholder text",
+      "Verify: node -e \"const fs = require('fs'); const {signPdf} = require('./server/lib/pdf-signer'); const pdf = fs.readFileSync('./test/fixtures/sample.pdf'); signPdf(pdf, [{type:'text', page:0, x:100, y:700, width:200, height:20, value:'Hello', fontSize:12, color:'#000000'}]).then(buf => console.log(buf.length > 0 ? 'ok' : 'fail'))\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 5,
+    "category": "foundation",
+    "description": "Create Express server with static file serving",
+    "steps": [
+      "Create server/index.js that sets up Express, serves static files from public/, sets JSON body limit to 50mb, and exports the app and a startServer(port) function",
+      "startServer should try ports 3000-3010 sequentially if the requested port is in use",
+      "Add request logging middleware (simple console.log of method + path)",
+      "Verify: node -e \"const {app} = require('./server/index'); console.log(typeof app.listen === 'function' ? 'ok' : 'fail')\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 6,
+    "category": "core",
+    "description": "Implement API routes for signature rendering and PDF signing",
+    "steps": [
+      "Create server/routes/api.js that exports an Express Router",
+      "Add POST /api/render-signature route: validates body has name (non-empty string) and fontIndex (0-5), calls renderSignature, returns JSON { dataUrl, width, height }",
+      "Add POST /api/sign route: validates body has pdf (base64 string) and elements (array), decodes PDF, for each signature element renders the signature first, then calls signPdf with all elements, returns the signed PDF buffer with Content-Type application/pdf",
+      "Add proper error responses: 400 for validation errors, 500 for processing errors, with JSON error messages",
+      "Wire the router into server/index.js under /api prefix",
+      "Verify: node -e \"const {app} = require('./server/index'); const request = require('supertest'); request(app).post('/api/render-signature').send({name:'Test',fontIndex:0}).expect(200).then(r => console.log(r.body.dataUrl ? 'ok' : 'fail'))\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 7,
+    "category": "core",
+    "description": "Create the main HTML page with upload area and layout",
+    "steps": [
+      "Create public/index.html with: a header bar with 'esign' branding, a PDF upload area (drag-and-drop + file picker), a main workspace area (hidden until PDF loaded) with a left sidebar for tools and center area for the PDF viewer, and a bottom action bar with 'Sign & Download' button",
+      "Include script tags for pdfjs-dist (from node_modules or CDN), and the app JS files: app.js, pdf-viewer.js, placement.js, signature-panel.js, text-panel.js",
+      "Set the pdf.js worker source path correctly",
+      "Verify: node -c public/index.html || echo 'not a JS file, checking existence' && test -f public/index.html && echo 'ok'"
+    ],
+    "passes": false
+  },
+  {
+    "id": 8,
+    "category": "core",
+    "description": "Create CSS styles for the application",
+    "steps": [
+      "Create public/css/style.css with styles for: the upload area (centered, dashed border, drag hover state), the workspace layout (sidebar + viewer using CSS grid or flexbox), page containers, element overlays (draggable items), the signature panel, the text panel, the action bar, and responsive breakpoints for smaller screens",
+      "Style draggable elements with a light border, resize handle in bottom-right corner, and selected state highlight",
+      "Use a clean, modern design with a neutral color palette (whites, grays, one accent color for actions)",
+      "Verify: test -f public/css/style.css && echo 'ok'"
+    ],
+    "passes": false
+  },
+  {
+    "id": 9,
+    "category": "core",
+    "description": "Implement PDF viewer with pdf.js rendering all pages",
+    "steps": [
+      "Create public/js/pdf-viewer.js that exports (via window.PdfViewer) a module with: loadPdf(arrayBuffer) that uses pdf.js to load the document, renderAllPages() that renders each page as a canvas inside a container div, getPageDimensions(pageIndex) returning {width, height} in PDF points, and getScale() returning the current render scale",
+      "Each page should be rendered inside a wrapper div with class 'pdf-page' that contains the canvas and an overlay div for placing elements",
+      "Pages should render at a scale that fits the viewer width (max ~800px wide)",
+      "Verify: test -f public/js/pdf-viewer.js && node -e \"const fs = require('fs'); const content = fs.readFileSync('public/js/pdf-viewer.js','utf8'); console.log(content.includes('pdfjsLib') && content.includes('renderAllPages') ? 'ok' : 'fail')\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 10,
+    "category": "core",
+    "description": "Implement placement engine for drag-and-drop elements",
+    "steps": [
+      "Create public/js/placement.js that exports (via window.Placement) a module for managing placed elements on the PDF",
+      "Implement addElement(pageIndex, type, options) that creates a draggable div on the page overlay with the element content (signature image or text input)",
+      "Implement drag functionality: mousedown on element starts drag, mousemove updates position, mouseup ends drag. Use CSS transform for smooth movement.",
+      "Implement resize: a small handle in the bottom-right corner of each element. Dragging it changes width/height.",
+      "Implement getElements() that returns an array of all placed elements with their current positions converted from screen pixels to PDF points using PdfViewer.getScale() and page dimensions",
+      "Implement removeElement(id) to delete a placed element (click X button on element)",
+      "Verify: test -f public/js/placement.js && node -e \"const fs = require('fs'); const content = fs.readFileSync('public/js/placement.js','utf8'); console.log(content.includes('addElement') && content.includes('getElements') ? 'ok' : 'fail')\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 11,
+    "category": "feature",
+    "description": "Build signature creation panel in the sidebar",
+    "steps": [
+      "Create public/js/signature-panel.js that exports (via window.SignaturePanel) a module for the signature creation UI",
+      "The panel contains: a text input for the signer's name, a font selector showing all 6 font options as clickable previews (using @font-face with Google Fonts CDN for preview), a font size slider (24-72, default 48), a color picker (default black), a 'Preview' button that calls /api/render-signature and shows the result, and an 'Add to Document' button that calls Placement.addElement with the rendered signature",
+      "The font preview should show the typed name in each font so the user can visually compare",
+      "Verify: test -f public/js/signature-panel.js && node -e \"const fs = require('fs'); const content = fs.readFileSync('public/js/signature-panel.js','utf8'); console.log(content.includes('render-signature') && content.includes('fontIndex') ? 'ok' : 'fail')\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 12,
+    "category": "feature",
+    "description": "Build text field creation panel in the sidebar",
+    "steps": [
+      "Create public/js/text-panel.js that exports (via window.TextPanel) a module for the text field creation UI",
+      "The panel contains: a text input for the value (with placeholder 'Enter date, name, etc.'), a font size selector (8-36, default 12), a color picker (default black), and an 'Add to Document' button that calls Placement.addElement with type='text'",
+      "Include quick-insert buttons for common fields: 'Today's Date' (inserts current date in MM/DD/YYYY format), 'Date (ISO)' (YYYY-MM-DD)",
+      "Verify: test -f public/js/text-panel.js && node -e \"const fs = require('fs'); const content = fs.readFileSync('public/js/text-panel.js','utf8'); console.log(content.includes('addElement') && content.includes('text') ? 'ok' : 'fail')\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 13,
+    "category": "feature",
+    "description": "Implement main app.js wiring: upload flow, sign & download",
+    "steps": [
+      "Create public/js/app.js that initializes the application: sets up the file upload (both drag-and-drop and file input), reads the PDF as ArrayBuffer, calls PdfViewer.loadPdf(), shows the workspace, initializes SignaturePanel and TextPanel",
+      "Implement the 'Sign & Download' button handler: collects all elements via Placement.getElements(), reads the original PDF as base64, sends POST /api/sign, receives the signed PDF blob, triggers a file download with filename 'signed-<original-filename>.pdf'",
+      "Show a loading spinner during the signing request",
+      "Handle errors with user-visible toast/alert messages",
+      "Verify: test -f public/js/app.js && node -e \"const fs = require('fs'); const content = fs.readFileSync('public/js/app.js','utf8'); console.log(content.includes('/api/sign') && content.includes('download') ? 'ok' : 'fail')\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 14,
+    "category": "feature",
+    "description": "Create CLI entry point with auto-open browser",
+    "steps": [
+      "Create bin/cli.js with a #!/usr/bin/env node shebang",
+      "Parse optional --port flag (default 3000) and --no-open flag to skip browser opening",
+      "Call startServer(port) from server/index.js, then use the 'open' package to open http://localhost:<port> in the default browser",
+      "Print a startup message: 'esign running at http://localhost:<port>'",
+      "Make bin/cli.js executable (chmod +x)",
+      "Verify: node bin/cli.js --help 2>&1 || node -e \"const fs = require('fs'); const content = fs.readFileSync('bin/cli.js','utf8'); console.log(content.includes('#!/usr/bin/env node') && content.includes('startServer') ? 'ok' : 'fail')\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 15,
+    "category": "reliability",
+    "description": "Add input validation, error handling, and size limits",
+    "steps": [
+      "In server/routes/api.js: validate that fontIndex is 0-5, fontSize is 8-200, color is a valid hex color string, name is non-empty and under 200 chars, pdf base64 decodes to valid PDF (check for %PDF header), elements array is non-empty and under 100 elements",
+      "In server/index.js: add Express error handling middleware that catches unhandled errors and returns JSON { error: message } with 500 status",
+      "Add a 50MB request body size limit in Express config (already in task 5 but verify it works — should return 413 on oversized requests)",
+      "In pdf-signer.js: wrap pdf-lib operations in try/catch, detect encrypted PDFs (pdf-lib throws a specific error) and return a clear error message",
+      "Verify: node -e \"const {app} = require('./server/index'); const request = require('supertest'); request(app).post('/api/render-signature').send({name:'',fontIndex:0}).expect(400).then(r => console.log(r.body.error ? 'ok' : 'fail'))\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 16,
+    "category": "reliability",
+    "description": "Handle multi-page PDFs and coordinate edge cases",
+    "steps": [
+      "In pdf-signer.js: ensure page index is bounds-checked (clamp to 0..pageCount-1), and x/y/width/height are clamped to the page dimensions",
+      "Create test/fixtures/multipage.pdf using pdf-lib — a 3-page PDF with different page sizes",
+      "Test that elements can be placed on pages 0, 1, and 2 independently",
+      "In the browser placement engine: ensure coordinate conversion accounts for different page sizes on multi-page documents",
+      "Verify: node -e \"const fs = require('fs'); const {signPdf} = require('./server/lib/pdf-signer'); const pdf = fs.readFileSync('./test/fixtures/multipage.pdf'); signPdf(pdf, [{type:'text', page:2, x:100, y:100, width:200, height:20, value:'Page 3', fontSize:12, color:'#000000'}]).then(buf => console.log(buf.length > 0 ? 'ok' : 'fail'))\""
+    ],
+    "passes": false
+  },
+  {
+    "id": 17,
+    "category": "testing",
+    "description": "Write integration tests for API endpoints",
+    "steps": [
+      "Create test/test-sign.js using mocha and supertest",
+      "Test POST /api/render-signature with valid input returns 200 with dataUrl, width, height",
+      "Test POST /api/render-signature with empty name returns 400",
+      "Test POST /api/render-signature with invalid fontIndex returns 400",
+      "Test POST /api/sign with a real sample.pdf and a text element returns a valid PDF buffer",
+      "Test POST /api/sign with a real sample.pdf and a signature element returns a valid PDF buffer",
+      "Test POST /api/sign with missing pdf field returns 400",
+      "Test POST /api/sign with empty elements array returns 400",
+      "Verify: npx mocha test/test-sign.js --timeout 10000"
+    ],
+    "passes": false
+  },
+  {
+    "id": 18,
+    "category": "testing",
+    "description": "Write a full end-to-end test script",
+    "steps": [
+      "Create test/e2e-test.sh that: starts the server in the background, waits for it to be ready (curl retry loop on http://localhost:3000), sends a POST to /api/render-signature with curl and checks for 200, sends a POST to /api/sign with the sample.pdf (base64 encoded) and a text element and saves the output PDF, verifies the output file starts with %PDF, kills the server, and exits with 0 on success or 1 on failure",
+      "Make the script executable",
+      "Verify: bash test/e2e-test.sh"
+    ],
+    "passes": false
+  },
+  {
+    "id": 19,
+    "category": "verification",
+    "description": "Final verification: lint, test, and manual checklist",
+    "steps": [
+      "Run: npx mocha test/test-sign.js --timeout 10000",
+      "Run: bash test/e2e-test.sh",
+      "Run: node -e \"require('./server/index')\" to verify server loads without errors (kill after 2 seconds)",
+      "Run: node -e \"const pkg = require('./package.json'); console.log(pkg.name === 'esign' && pkg.bin && pkg.bin.esign ? 'ok' : 'fail')\"",
+      "Verify that all source files exist: ls bin/cli.js server/index.js server/routes/api.js server/lib/pdf-signer.js server/lib/signature-renderer.js server/lib/font-loader.js public/index.html public/css/style.css public/js/app.js public/js/pdf-viewer.js public/js/placement.js public/js/signature-panel.js public/js/text-panel.js",
+      "Verify: npx mocha test/test-sign.js --timeout 10000 && bash test/e2e-test.sh && echo 'ALL CHECKS PASSED'"
+    ],
+    "passes": false
+  }
+]
