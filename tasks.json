@@ -88,7 +88,7 @@
       "Configure pdf.js workerSrc to point to the local pdfjs-dist worker file",
       "Verify: test -f renderer/index.html && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/index.html','utf8'); console.log(c.includes('app.js') && c.includes('pdf-viewer.js') && c.includes('style.css') ? 'ok' : 'fail')\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 8,

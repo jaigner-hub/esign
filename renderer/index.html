@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;">
+  <title>esign</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script&family=Great+Vibes&family=Caveat&family=Sacramento&family=Pacifico&family=Homemade+Apple&display=swap">
+</head>
+<body>
+  <!-- Header Bar -->
+  <header id="header">
+    <div class="header-brand">esign</div>
+    <button id="header-open-btn" class="btn btn-header">Open PDF</button>
+  </header>
+
+  <!-- Drop Zone (visible when no PDF loaded) -->
+  <div id="drop-zone">
+    <div class="drop-zone-content">
+      <div class="drop-zone-icon">&#128196;</div>
+      <h2>Drop a PDF here</h2>
+      <p>or</p>
+      <button id="drop-zone-open-btn" class="btn btn-primary">Choose File</button>
+    </div>
+  </div>
+
+  <!-- Main Workspace (hidden until PDF loaded) -->
+  <div id="workspace" class="hidden">
+    <!-- Left Sidebar -->
+    <aside id="sidebar">
+      <div id="signature-panel-container" class="panel-section">
+        <h3>Signature</h3>
+      </div>
+      <div id="text-panel-container" class="panel-section">
+        <h3>Text Field</h3>
+      </div>
+    </aside>
+
+    <!-- PDF Viewer Area -->
+    <main id="viewer-container">
+      <div id="pdf-pages"></div>
+    </main>
+  </div>
+
+  <!-- Action Bar (fixed bottom) -->
+  <div id="action-bar" class="hidden">
+    <button id="sign-save-btn" class="btn btn-primary" disabled>Sign &amp; Save</button>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="hidden">
+    <div class="spinner"></div>
+    <p>Signing document...</p>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="../node_modules/pdfjs-dist/build/pdf.min.mjs" type="module"></script>
+  <script>
+    // Configure pdf.js worker
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = '../node_modules/pdfjs-dist/build/pdf.worker.min.mjs';
+      }
+    });
+  </script>
+  <script src="js/pdf-viewer.js"></script>
+  <script src="js/placement.js"></script>
+  <script src="js/signature-panel.js"></script>
+  <script src="js/text-panel.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

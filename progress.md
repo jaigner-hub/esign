@@ -38,3 +38,9 @@
 - Handlers: render-signature, sign-pdf (renders signatures first then embeds), open-file-dialog, save-file
 - All handlers wrapped in try/catch with descriptive error messages
 - All verification steps passed
+
+### Iteration 7 — Task 7: Create main HTML page
+- Created renderer/index.html with header, drop zone, workspace (sidebar + viewer), action bar
+- Configured pdf.js workerSrc to local pdfjs-dist path
+- Included all renderer JS scripts and CSS link
+- All verification steps passed
