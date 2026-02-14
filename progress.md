@@ -86,3 +86,9 @@
 - Created forge.config.js with appId, productName, platform targets (nsis, dmg, AppImage)
 - @napi-rs/canvas added to asarUnpack for native bindings
 - All verification steps passed
+
+### Iteration 15 — Task 15: Add input validation and error handling
+- Added validateSignatureOpts and validateSignPdfInput to ipc-handlers.js
+- pdf-signer.js: encrypted PDF detection, try/catch around each element, coordinate clamping
+- app.js already had try/catch on all electronAPI calls with toast messages
+- All verification steps passed

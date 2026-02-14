@@ -8,11 +8,21 @@ function parseHexColor(hex) {
 }
 
 async function signPdf(pdfBytes, elements) {
-  const pdfDoc = await PDFDocument.load(pdfBytes);
+  let pdfDoc;
+  try {
+    pdfDoc = await PDFDocument.load(pdfBytes);
+  } catch (err) {
+    if (err.message && (err.message.includes('encrypt') || err.message.includes('password'))) {
+      throw new Error('This PDF is encrypted/password-protected and cannot be signed');
+    }
+    throw new Error(`Failed to load PDF: ${err.message}`);
+  }
+
   const pages = pdfDoc.getPages();
   const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
   for (const el of elements) {
+    // Clamp page index to valid range
     const pageIndex = Math.max(0, Math.min(el.page, pages.length - 1));
     const page = pages[pageIndex];
     const { width: pageWidth, height: pageHeight } = page.getSize();
@@ -22,31 +32,40 @@ async function signPdf(pdfBytes, elements) {
     const y = Math.max(0, Math.min(el.y, pageHeight));
 
     if (el.type === 'signature' && el.dataUrl) {
-      // Decode base64 PNG from dataUrl
-      const base64Data = el.dataUrl.replace(/^data:image\/png;base64,/, '');
-      const pngBytes = Buffer.from(base64Data, 'base64');
-      const pngImage = await pdfDoc.embedPng(pngBytes);
+      try {
+        // Decode base64 PNG from dataUrl
+        const base64Data = el.dataUrl.replace(/^data:image\/png;base64,/, '');
+        const pngBytes = Buffer.from(base64Data, 'base64');
+        const pngImage = await pdfDoc.embedPng(pngBytes);
 
-      const drawWidth = Math.min(el.width || pngImage.width, pageWidth - x);
-      const drawHeight = Math.min(el.height || pngImage.height, pageHeight - y);
+        // Clamp width/height to remaining page space
+        const drawWidth = Math.max(1, Math.min(el.width || pngImage.width, pageWidth - x));
+        const drawHeight = Math.max(1, Math.min(el.height || pngImage.height, pageHeight - y));
 
-      page.drawImage(pngImage, {
-        x,
-        y,
-        width: drawWidth,
-        height: drawHeight,
-      });
+        page.drawImage(pngImage, {
+          x,
+          y,
+          width: drawWidth,
+          height: drawHeight,
+        });
+      } catch (err) {
+        throw new Error(`Failed to embed signature on page ${pageIndex}: ${err.message}`);
+      }
     } else if (el.type === 'text') {
-      const color = el.color ? parseHexColor(el.color) : rgb(0, 0, 0);
-      const fontSize = el.fontSize || 12;
+      try {
+        const color = el.color ? parseHexColor(el.color) : rgb(0, 0, 0);
+        const fontSize = Math.max(1, Math.min(el.fontSize || 12, 200));
 
-      page.drawText(el.value || '', {
-        x,
-        y,
-        size: fontSize,
-        font: helvetica,
-        color,
-      });
+        page.drawText(el.value || '', {
+          x,
+          y,
+          size: fontSize,
+          font: helvetica,
+          color,
+        });
+      } catch (err) {
+        throw new Error(`Failed to draw text on page ${pageIndex}: ${err.message}`);
+      }
     }
   }
 
