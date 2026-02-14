@@ -104,3 +104,8 @@
 - Created test/test-sign.js with 7 mocha/chai tests
 - Tests: valid signature render, empty name error, all 6 fonts, text element signing, signature element signing, multipage elements, out-of-range page clamping
 - All 7 tests passing
+
+### Iteration 18 — Task 18: Write end-to-end test script
+- Created test/e2e-test.sh: generates fixtures, runs mocha tests, exercises full pipeline
+- Full pipeline: load PDF, render signature, sign with signature+text, verify %PDF output
+- All e2e tests passing

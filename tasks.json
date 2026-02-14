@@ -231,7 +231,7 @@
       "Make the script executable with chmod +x",
       "Verify: bash test/e2e-test.sh"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 19,
