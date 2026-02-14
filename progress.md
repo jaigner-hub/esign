@@ -92,3 +92,10 @@
 - pdf-signer.js: encrypted PDF detection, try/catch around each element, coordinate clamping
 - app.js already had try/catch on all electronAPI calls with toast messages
 - All verification steps passed
+
+### Iteration 16 — Task 16: Handle multi-page PDFs and coordinate edge cases
+- generate-pdfs.js already creates multipage.pdf with Letter, A4, Legal pages (done in task 4)
+- pdf-signer.js already clamps page index and handles per-page dimensions
+- pdf-viewer.js stores per-page dimensions, placement.js uses them for coordinate conversion
+- Verified signing elements on pages 0 and 2 of multipage.pdf works correctly
+- All verification steps passed
