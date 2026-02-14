@@ -123,7 +123,7 @@
    * Load a PDF into the viewer and switch to workspace view.
    */
   async function loadPdf(bytes, filename) {
-    originalPdfBytes = bytes;
+    originalPdfBytes = bytes.slice();
     originalFilename = filename;
 
     // Clear any previously placed elements

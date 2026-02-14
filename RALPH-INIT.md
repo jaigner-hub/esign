@@ -106,6 +106,7 @@ You are an autonomous coding agent building <one-line project description>. Each
 7. **Update `tasks.json`** — set `"passes": true` for the completed task. **ONLY change the `passes` field. Never edit, remove, or reorder tasks.**
 8. **Update `progress.md`** with a log entry for this iteration.
 9. **Commit** with descriptive message using `feat:` or `fix:` prefix.
+10. **STOP.** You are done. Do not continue to the next task. Exit immediately after committing. The loop script will start a new process for the next task.
 
 ## Rules for tasks.json
 
@@ -139,6 +140,14 @@ You are an autonomous coding agent building <one-line project description>. Each
 **Then copy this ending section exactly:**
 
 ````markdown
+## CRITICAL: One Task Per Invocation
+
+**You MUST stop after completing exactly ONE task.** This is the most important rule.
+
+After you commit, your job is done. Do NOT read the next task. Do NOT continue working. The loop script (`ralph.sh`) will invoke you again in a fresh process with fresh context for the next task. This is by design — it keeps context windows clean and allows progress monitoring between tasks.
+
+**If you complete a task and keep going to the next one, you are violating the core contract of this system.**
+
 ## Completion Signal
 
 When ALL tasks have `"passes": true` in tasks.json and final verification is done, write this exact line to progress.md:
@@ -151,7 +160,7 @@ This signals the loop script to stop.
 
 ## Important Notes
 
-- **One task per iteration.** Don't try to do multiple tasks at once.
+- **ONE task, then STOP.** Complete one task, commit, and exit. Do not proceed to the next task.
 - **Commit after each task.** Use `git add <specific files>` then `git commit -m "feat: ..."`.
 - **If a task fails**, note the issue in progress.md and move on to the next task if possible. Come back to fix it later.
 - **Read existing code** before writing. Check what files already exist.
@@ -191,4 +200,6 @@ We have an existing repo here that you can analyze:
 /mnt/c/Users/Jeff/Desktop/esign
 
 This is software for signign PDFs. The issue is that there is no free software (that I know of) that is easy to use and allows you to attach your signature to a PDF. It needs the ability to generate signatures of various fonts and place them in the PDF, the ability to add regular text to the PDF (for entering dates, and printing fields). I want this project to be cross-platform, so making it web-based like the current iteration is probably a good idea. I really want this tool to be easy to download / install so anything we can do to improve that would be good. I like the portability of Go but not sure it's right for this project, it might be best to stick with javascript.
+
+Although I want it to be javascript, I still want it to be a desktop application. I do not want it to be a website that I have to host. I would prefer if it produced an easy binary or installer to use like with electron or something similar.
 
