@@ -176,7 +176,7 @@
       "Add a 'package' script to package.json: 'electron-builder' or 'electron-builder --config forge.config.js'",
       "Verify: node -e \"const fs = require('fs'); const pkg = require('./package.json'); const hasConfig = fs.existsSync('forge.config.js') || pkg.build; console.log(hasConfig && pkg.scripts.package ? 'ok' : 'fail')\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 15,

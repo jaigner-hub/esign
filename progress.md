@@ -81,3 +81,8 @@
 - File open via buttons and drag-and-drop, loading overlay, sign & save flow
 - Wires PdfViewer, Placement, SignaturePanel, TextPanel together
 - All verification steps passed
+
+### Iteration 14 — Task 14: Configure electron-builder for packaging
+- Created forge.config.js with appId, productName, platform targets (nsis, dmg, AppImage)
+- @napi-rs/canvas added to asarUnpack for native bindings
+- All verification steps passed
