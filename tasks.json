@@ -245,6 +245,6 @@
       "Verify package.json is correct: node -e \"const pkg = require('./package.json'); console.log(pkg.name === 'esign' && pkg.main === 'main/main.js' && pkg.scripts.start && pkg.scripts.package ? 'ok' : 'fail')\"",
       "Verify: npx mocha test/test-sign.js --timeout 15000 && bash test/e2e-test.sh && echo 'ALL CHECKS PASSED'"
     ],
-    "passes": false
+    "passes": true
   }
 ]
