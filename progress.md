@@ -50,3 +50,9 @@
 - Header (#1a1a2e), drop zone, workspace flexbox layout, PDF page containers, element overlays
 - Resize handles, action bar, loading spinner, toast notifications
 - All verification steps passed
+
+### Iteration 9 — Task 9: Implement PDF viewer
+- Created renderer/js/pdf-viewer.js with PdfViewer module
+- Uses pdfjsLib.getDocument, renders all pages as canvases with overlay divs
+- Stores per-page dimensions in PDF points, calculates scale to fit max 800px width
+- All verification steps passed
