@@ -69,3 +69,9 @@
 - Name input, 6 font preview boxes (live update), font size slider, color picker
 - Preview button calls electronAPI.renderSignature, Add button calls Placement.addElement
 - All verification steps passed
+
+### Iteration 12 — Task 12: Build text field panel
+- Created renderer/js/text-panel.js with TextPanel module
+- Text input, quick-insert date buttons (MM/DD/YYYY and ISO), font size, color
+- Add to Document button calls Placement.addElement
+- All verification steps passed
