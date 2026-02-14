@@ -1,0 +1,28 @@
+{
+  "name": "esign",
+  "version": "1.0.0",
+  "description": "Free desktop application for signing PDFs with typed signatures and text fields",
+  "main": "main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "mocha test/test-sign.js --timeout 10000",
+    "package": "electron-builder --config"
+  },
+  "keywords": [
+    "pdf",
+    "signature",
+    "electron"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.92",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.4.624"
+  },
+  "devDependencies": {
+    "chai": "^6.2.2",
+    "electron": "^40.4.1",
+    "electron-builder": "^26.7.0",
+    "mocha": "^11.7.5"
+  }
+}
