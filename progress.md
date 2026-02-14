@@ -75,3 +75,9 @@
 - Text input, quick-insert date buttons (MM/DD/YYYY and ISO), font size, color
 - Add to Document button calls Placement.addElement
 - All verification steps passed
+
+### Iteration 13 — Task 13: Implement app.js
+- Created renderer/js/app.js with DOMContentLoaded initialization
+- File open via buttons and drag-and-drop, loading overlay, sign & save flow
+- Wires PdfViewer, Placement, SignaturePanel, TextPanel together
+- All verification steps passed

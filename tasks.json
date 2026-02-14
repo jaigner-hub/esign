@@ -164,7 +164,7 @@
       "Show a loading overlay during signing, show success/error toast messages",
       "Verify: test -f renderer/js/app.js && node -e \"const fs = require('fs'); const c = fs.readFileSync('renderer/js/app.js','utf8'); console.log(c.includes('signPdf') && c.includes('openFileDialog') && c.includes('DOMContentLoaded') ? 'ok' : 'fail')\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 14,
