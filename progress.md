@@ -32,3 +32,9 @@
 - Created main/main.js with BrowserWindow, contextIsolation, application menu (Open PDF, Quit)
 - Created main/preload.js with contextBridge exposing electronAPI (renderSignature, signPdf, openFileDialog, saveFile)
 - All verification steps passed
+
+### Iteration 6 — Task 6: Register IPC handlers
+- Created main/ipc-handlers.js with registerHandlers(mainWindow) function
+- Handlers: render-signature, sign-pdf (renders signatures first then embeds), open-file-dialog, save-file
+- All handlers wrapped in try/catch with descriptive error messages
+- All verification steps passed

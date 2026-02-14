@@ -75,7 +75,7 @@
       "Call registerHandlers(mainWindow) from main.js after window creation",
       "Verify: node -e \"const fs = require('fs'); const content = fs.readFileSync('main/ipc-handlers.js','utf8'); console.log(content.includes('render-signature') && content.includes('sign-pdf') && content.includes('open-file-dialog') && content.includes('save-file') ? 'ok' : 'fail')\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 7,
