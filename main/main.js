@@ -1,7 +1,7 @@
 const { app, BrowserWindow, Menu, dialog } = require('electron');
 const path = require('path');
 
-let mainWindow;
+let mainWindow = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -10,64 +10,59 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      preload: path.join(__dirname, 'preload.js'),
-    },
+      preload: path.join(__dirname, 'preload.js')
+    }
   });
 
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
-  // Register IPC handlers
   const { registerHandlers } = require('./ipc-handlers');
   registerHandlers(mainWindow);
+}
 
-  // Build application menu
-  const menuTemplate = [
+function buildMenu() {
+  const template = [
     {
       label: 'File',
       submenu: [
         {
           label: 'Open PDF',
           accelerator: 'CmdOrCtrl+O',
-          click: async () => {
-            const result = await dialog.showOpenDialog(mainWindow, {
-              filters: [{ name: 'PDF Files', extensions: ['pdf'] }],
-              properties: ['openFile'],
-            });
-            if (!result.canceled && result.filePaths.length > 0) {
-              const fs = require('fs');
-              const filePath = result.filePaths[0];
-              const bytes = fs.readFileSync(filePath);
-              mainWindow.webContents.send('file-opened', {
-                name: path.basename(filePath),
-                bytes: new Uint8Array(bytes),
-              });
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('menu-open-pdf');
             }
-          },
+          }
         },
         { type: 'separator' },
         {
           label: 'Quit',
           accelerator: 'CmdOrCtrl+Q',
-          click: () => app.quit(),
-        },
-      ],
-    },
+          click: () => {
+            app.quit();
+          }
+        }
+      ]
+    }
   ];
 
-  const menu = Menu.buildFromTemplate(menuTemplate);
+  const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  buildMenu();
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
-  }
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
   }
 });

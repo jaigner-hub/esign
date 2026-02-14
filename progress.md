@@ -36,3 +36,12 @@
 - Created test/fixtures/generate-pdfs.js to generate sample.pdf (1-page US Letter with placeholder text)
 - Generated test/fixtures/sample.pdf successfully
 - Verified: text element signing produces valid PDF, signature element signing produces valid PDF with %PDF- header
+
+### Task 5 — Create Electron main process entry point and preload script (2026-02-14)
+- Created main/main.js: BrowserWindow with contextIsolation: true, nodeIntegration: false, preload pointing to main/preload.js, width 1200, height 800
+- Loads renderer/index.html
+- Minimal application menu: File > Open PDF (CmdOrCtrl+O, sends 'menu-open-pdf' to renderer), File > Quit (CmdOrCtrl+Q)
+- Calls registerHandlers(mainWindow) from ipc-handlers.js after window creation
+- Created main/preload.js: contextBridge.exposeInMainWorld('electronAPI') with methods: renderSignature, signPdf, openFileDialog, saveFile, onMenuOpenPdf
+- All IPC methods use ipcRenderer.invoke for async communication
+- Verification passes: both files contain expected patterns (BrowserWindow, contextBridge)
