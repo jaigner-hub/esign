@@ -17,3 +17,12 @@
 - All 6 fonts downloaded successfully: DancingScript, GreatVibes, Caveat, Sacramento, Pacifico, HomemadeApple
 - Created main/lib/font-loader.js with FONTS array (6 entries) and loadFontBuffer(fontIndex) function
 - Both verification steps pass: FONTS.length === 6 and 6 .ttf files in assets/fonts/
+
+### Task 3 — Build signature renderer module (2026-02-14)
+- Created main/lib/signature-renderer.js with async renderSignature({ name, fontIndex, fontSize, color })
+- Uses @napi-rs/canvas: registers fonts via GlobalFonts.registerFromPath, measures text width, creates transparent canvas (width from metrics + 20px padding, height = fontSize * 1.5), draws text, exports as PNG data URL
+- Caches font registrations to avoid re-registering on repeated calls
+- Defaults: fontSize=48, color='#000000'
+- Returns { dataUrl, width, height } where dataUrl is data:image/png;base64,...
+- Validates name is non-empty string, fontIndex is in valid range
+- Verified with all 6 font indices, empty name error case, and task verification step

@@ -36,7 +36,7 @@
       "Default fontSize=48, default color='#000000'. dataUrl should be a data:image/png;base64 string.",
       "Verify: node -e \"const sr = require('./main/lib/signature-renderer'); sr.renderSignature({name:'Test User', fontIndex:0, fontSize:48, color:'#000000'}).then(r => console.log(r.width > 0 && r.dataUrl.startsWith('data:image/png') ? 'ok' : 'fail'))\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 4,
