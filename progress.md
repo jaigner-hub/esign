@@ -45,3 +45,14 @@
 - Created main/preload.js: contextBridge.exposeInMainWorld('electronAPI') with methods: renderSignature, signPdf, openFileDialog, saveFile, onMenuOpenPdf
 - All IPC methods use ipcRenderer.invoke for async communication
 - Verification passes: both files contain expected patterns (BrowserWindow, contextBridge)
+
+### Task 6 — Register IPC handlers for signature rendering, PDF signing, file dialogs (2026-02-14)
+- Created main/ipc-handlers.js with registerHandlers(mainWindow) function
+- Registered 4 IPC handlers:
+  - `render-signature`: calls renderSignature from signature-renderer.js, returns { dataUrl, width, height }
+  - `sign-pdf`: for each signature element, renders via renderSignature to get dataUrl, then calls signPdf with all elements; returns Uint8Array
+  - `open-file-dialog`: opens dialog.showOpenDialog with PDF filter, reads selected file, returns { name, bytes } or null
+  - `save-file`: opens dialog.showSaveDialog with default filename, writes bytes to disk, returns saved path or null
+- All handlers wrapped in try/catch with descriptive error messages
+- main.js already calls registerHandlers(mainWindow) from Task 5
+- Verification passes: all 4 IPC channel names present in the file
