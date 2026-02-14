@@ -133,3 +133,14 @@
 - Includes input validation (non-empty text, font size range) and toast notifications for user feedback
 - Follows same patterns as signature-panel.js (IIFE, window exposure, toast helper)
 - Verification passes: file contains addElement, text, and fontSize
+
+### Task 13 — Implement main app.js: file open, wire panels, sign & save flow (2026-02-14)
+- Created renderer/js/app.js as an IIFE that initializes on DOMContentLoaded (with pdfjsReady fallback)
+- File opening: both "Open PDF" buttons (header and drop zone) call electronAPI.openFileDialog(), receive { name, bytes }, convert to Uint8Array, call PdfViewer.loadPdf(), hide drop zone, show workspace
+- Drag-and-drop: dragover/dragleave/drop events on the drop zone, reads dropped .pdf via FileReader as ArrayBuffer, same load flow
+- Initializes all modules: PdfViewer.init(#pdf-container), Placement.init(), SignaturePanel.init(#signature-panel-container), TextPanel.init(#text-panel-container)
+- Sign & Save: collects elements via Placement.getElements(), calls electronAPI.signPdf(originalPdfBytes, elements), then electronAPI.saveFile(signedBytes, 'signed-' + filename)
+- Shows loading overlay during signing, toast messages for success/error throughout
+- Listens for menu-triggered Open PDF via electronAPI.onMenuOpenPdf
+- Stores originalPdfBytes and originalFilename for the sign & save flow
+- Verification passes: file contains signPdf, openFileDialog, and DOMContentLoaded

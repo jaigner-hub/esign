@@ -1,136 +1,228 @@
-/* App - initialization, file open, sign & save flow */
+/**
+ * App initialization — file open, wire panels, sign & save flow
+ * Must be loaded last after PdfViewer, Placement, SignaturePanel, TextPanel
+ */
 (function () {
   'use strict';
 
   let originalPdfBytes = null;
   let originalFilename = null;
 
-  document.addEventListener('DOMContentLoaded', () => {
-    // Initialize modules
-    window.PdfViewer.init(document.getElementById('pdf-pages'));
+  function initialize() {
+    // Initialize PdfViewer
+    const pdfContainer = document.getElementById('pdf-container');
+    if (pdfContainer) {
+      window.PdfViewer.init(pdfContainer);
+    }
+
+    // Initialize Placement engine
     window.Placement.init();
-    window.SignaturePanel.init(document.getElementById('signature-panel-container'));
-    window.TextPanel.init(document.getElementById('text-panel-container'));
 
-    // File open buttons
-    document.getElementById('header-open-btn').addEventListener('click', openFile);
-    document.getElementById('drop-zone-open-btn').addEventListener('click', openFile);
+    // Initialize sidebar panels
+    const sigContainer = document.getElementById('signature-panel-container');
+    if (sigContainer) {
+      window.SignaturePanel.init(sigContainer);
+    }
 
-    // Drag and drop on drop zone
+    const textContainer = document.getElementById('text-panel-container');
+    if (textContainer) {
+      window.TextPanel.init(textContainer);
+    }
+
+    // Wire up Open PDF buttons
+    const headerOpenBtn = document.getElementById('header-open-btn');
+    const dropZoneOpenBtn = document.getElementById('drop-zone-open-btn');
+
+    if (headerOpenBtn) {
+      headerOpenBtn.addEventListener('click', openPdfDialog);
+    }
+    if (dropZoneOpenBtn) {
+      dropZoneOpenBtn.addEventListener('click', openPdfDialog);
+    }
+
+    // Wire up drag-and-drop on the drop zone
     const dropZone = document.getElementById('drop-zone');
-    dropZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dropZone.classList.add('drag-over');
-    });
-    dropZone.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dropZone.classList.remove('drag-over');
-    });
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dropZone.classList.remove('drag-over');
+    if (dropZone) {
+      dropZone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('drag-over');
+      });
 
-      const files = e.dataTransfer.files;
-      if (files.length > 0 && files[0].name.toLowerCase().endsWith('.pdf')) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const bytes = new Uint8Array(reader.result);
-          loadPdfIntoViewer(files[0].name, bytes);
-        };
-        reader.readAsArrayBuffer(files[0]);
-      } else {
-        showToast('Please drop a PDF file', 'error');
-      }
-    });
+      dropZone.addEventListener('dragleave', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('drag-over');
+      });
 
-    // Sign & Save button
-    document.getElementById('sign-save-btn').addEventListener('click', signAndSave);
-
-    // Listen for placement changes to enable/disable Sign & Save
-    document.addEventListener('placement-changed', (e) => {
-      const btn = document.getElementById('sign-save-btn');
-      btn.disabled = e.detail.count === 0;
-    });
-
-    // Listen for file opened from menu
-    if (window.electronAPI && window.electronAPI.onFileOpened) {
-      window.electronAPI.onFileOpened((data) => {
-        loadPdfIntoViewer(data.name, new Uint8Array(data.bytes));
+      dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('drag-over');
+        handleDroppedFiles(e.dataTransfer.files);
       });
     }
-  });
 
-  async function openFile() {
+    // Wire up Sign & Save button
+    const signSaveBtn = document.getElementById('sign-save-btn');
+    if (signSaveBtn) {
+      signSaveBtn.addEventListener('click', signAndSave);
+    }
+
+    // Listen for menu-triggered Open PDF
+    if (window.electronAPI && window.electronAPI.onMenuOpenPdf) {
+      window.electronAPI.onMenuOpenPdf(function () {
+        openPdfDialog();
+      });
+    }
+  }
+
+  /**
+   * Open PDF via the Electron file dialog.
+   */
+  async function openPdfDialog() {
     try {
       const result = await window.electronAPI.openFileDialog();
-      if (result) {
-        loadPdfIntoViewer(result.name, new Uint8Array(result.bytes));
+      if (!result) return; // user cancelled
+
+      const bytes = new Uint8Array(result.bytes);
+      await loadPdf(bytes, result.name);
+    } catch (err) {
+      showToast('Failed to open PDF: ' + err.message, 'error');
+    }
+  }
+
+  /**
+   * Handle files dropped onto the drop zone.
+   */
+  function handleDroppedFiles(files) {
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      showToast('Please drop a PDF file', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async function () {
+      try {
+        const bytes = new Uint8Array(reader.result);
+        await loadPdf(bytes, file.name);
+      } catch (err) {
+        showToast('Failed to load PDF: ' + err.message, 'error');
       }
-    } catch (err) {
-      showToast('Failed to open file: ' + err.message, 'error');
-    }
+    };
+    reader.onerror = function () {
+      showToast('Failed to read file', 'error');
+    };
+    reader.readAsArrayBuffer(file);
   }
 
-  async function loadPdfIntoViewer(name, bytes) {
-    try {
-      originalPdfBytes = bytes;
-      originalFilename = name;
+  /**
+   * Load a PDF into the viewer and switch to workspace view.
+   */
+  async function loadPdf(bytes, filename) {
+    originalPdfBytes = bytes;
+    originalFilename = filename;
 
-      await window.PdfViewer.loadPdf(bytes);
-      window.Placement.clearAll();
+    // Clear any previously placed elements
+    window.Placement.clearAll();
 
-      // Show workspace, hide drop zone
-      document.getElementById('drop-zone').classList.add('hidden');
-      document.getElementById('workspace').classList.remove('hidden');
-      document.getElementById('action-bar').classList.remove('hidden');
-      document.getElementById('sign-save-btn').disabled = true;
-    } catch (err) {
-      showToast('Failed to load PDF: ' + err.message, 'error');
-    }
+    // Load into the viewer
+    await window.PdfViewer.loadPdf(bytes);
+
+    // Switch from drop zone to workspace view
+    const dropZone = document.getElementById('drop-zone');
+    const workspace = document.getElementById('workspace');
+    const actionBar = document.getElementById('action-bar');
+
+    if (dropZone) dropZone.classList.add('hidden');
+    if (workspace) workspace.classList.remove('hidden');
+    if (actionBar) actionBar.classList.remove('hidden');
+
+    showToast('Loaded: ' + filename, 'success');
   }
 
+  /**
+   * Collect elements, sign the PDF, and save.
+   */
   async function signAndSave() {
+    if (!originalPdfBytes) {
+      showToast('No PDF loaded', 'error');
+      return;
+    }
+
     const elements = window.Placement.getElements();
     if (elements.length === 0) {
-      showToast('No elements placed on the document', 'error');
+      showToast('Add at least one signature or text field first', 'error');
       return;
     }
 
     const loadingOverlay = document.getElementById('loading-overlay');
-    loadingOverlay.classList.remove('hidden');
 
     try {
+      // Show loading overlay
+      if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+
+      // Sign the PDF
       const signedBytes = await window.electronAPI.signPdf(
         Array.from(originalPdfBytes),
         elements
       );
 
-      const defaultName = 'signed-' + originalFilename;
+      // Determine default filename
+      const defaultName = 'signed-' + (originalFilename || 'document.pdf');
+
+      // Save the file
       const savedPath = await window.electronAPI.saveFile(
         Array.from(signedBytes),
         defaultName
       );
 
       if (savedPath) {
-        showToast('Document saved to ' + savedPath, 'success');
+        showToast('Saved to: ' + savedPath, 'success');
       }
     } catch (err) {
       showToast('Failed to sign PDF: ' + err.message, 'error');
     } finally {
-      loadingOverlay.classList.add('hidden');
+      // Hide loading overlay
+      if (loadingOverlay) loadingOverlay.classList.add('hidden');
     }
   }
 
+  /**
+   * Show a toast notification.
+   */
   function showToast(message, type) {
     const container = document.getElementById('toast-container');
     if (!container) return;
+
     const toast = document.createElement('div');
     toast.className = 'toast ' + (type || 'info');
     toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+
+    setTimeout(function () {
+      toast.classList.add('fade-out');
+      setTimeout(function () {
+        toast.remove();
+      }, 300);
+    }, 3000);
+  }
+
+  // Initialize when DOM is ready, but wait for pdf.js to load too
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', waitForPdfJs);
+  } else {
+    waitForPdfJs();
+  }
+
+  function waitForPdfJs() {
+    if (window.pdfjsLib) {
+      initialize();
+    } else {
+      window.addEventListener('pdfjsReady', initialize);
+    }
   }
 })();
