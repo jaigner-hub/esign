@@ -27,3 +27,8 @@
 - Parses hex colors, clamps coordinates to page bounds
 - Created test/fixtures/generate-pdfs.js to generate sample.pdf and multipage.pdf
 - All verification steps passed
+
+### Iteration 5 — Task 5: Create Electron main process and preload
+- Created main/main.js with BrowserWindow, contextIsolation, application menu (Open PDF, Quit)
+- Created main/preload.js with contextBridge exposing electronAPI (renderSignature, signPdf, openFileDialog, saveFile)
+- All verification steps passed

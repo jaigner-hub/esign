@@ -60,7 +60,7 @@
       "Create main/preload.js: use contextBridge.exposeInMainWorld to expose an 'electronAPI' object with methods: renderSignature(opts) → ipcRenderer.invoke('render-signature', opts), signPdf(pdfBytes, elements) → ipcRenderer.invoke('sign-pdf', pdfBytes, elements), openFileDialog() → ipcRenderer.invoke('open-file-dialog'), saveFile(bytes, defaultName) → ipcRenderer.invoke('save-file', bytes, defaultName)",
       "Verify: node -e \"const fs = require('fs'); const m = fs.readFileSync('main/main.js','utf8'); const p = fs.readFileSync('main/preload.js','utf8'); console.log(m.includes('BrowserWindow') && p.includes('contextBridge') ? 'ok' : 'fail')\""
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 6,
