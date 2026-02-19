@@ -2,6 +2,7 @@
  * FreeSign Backend API
  * Phase 1: Freemium authentication and usage tracking
  * Phase 2: Email verification + Stripe checkout fix
+ * Phase 3: Pay-per-signature ($0.99 each)
  */
 
 const express = require('express');
@@ -12,6 +13,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { Pool } = require('pg');
 const rateLimit = require('express-rate-limit');
+const { Resend } = require('resend');
 const validator = require('validator');
 const Stripe = require('stripe');
 const nodemailer = require('nodemailer');
@@ -51,13 +53,15 @@ if (process.env.SMTP_HOST) {
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@freesign.ink';
 
 // Database pool
+const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || 'freesign',
   user: process.env.DB_USER || 'freesign',
   password: process.env.DB_PASSWORD,
-  max: 20,
+  max: 50,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
@@ -69,6 +73,8 @@ async function runMigrations() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token VARCHAR(64)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expires TIMESTAMPTZ`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_verification_token ON users(verification_token)`);
+    // Phase 3: Pay-per-signature credits
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_credits INTEGER DEFAULT 0`);
     console.log('✅ Migrations complete');
   } catch (err) {
     console.error('Migration warning:', err.message);
@@ -93,7 +99,7 @@ app.use(express.json({ limit: '10mb' }));
 // Rate limiting for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 50,
   message: { error: 'Too many attempts, please try again later' }
 });
 
@@ -119,7 +125,7 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     const result = await pool.query(
-      'SELECT id, email, name, tier, subscription_status, stripe_customer_id, email_verified FROM users WHERE id = $1',
+      'SELECT id, email, name, tier, subscription_status, stripe_customer_id, email_verified, signature_credits FROM users WHERE id = $1',
       [decoded.userId]
     );
     
@@ -147,17 +153,9 @@ async function getMonthlyUsage(userId) {
   return parseInt(result.rows[0].count);
 }
 
-// Helper: Get user's tier limit
-function getTierLimit(tier) {
-  switch (tier) {
-    case 'pro':
-    case 'business':
-      return Infinity;
-    case 'free':
-    default:
-      return 3;
-  }
-}
+// Constants
+const FREE_MONTHLY_LIMIT = 3;
+const SIGNATURE_PRICE_CENTS = 99; // $0.99
 
 // Helper: Generate verification token
 function generateVerificationToken() {
@@ -168,14 +166,14 @@ function generateVerificationToken() {
 async function sendVerificationEmail(email, token) {
   const verifyUrl = `${process.env.FRONTEND_URL || 'https://freesign.ink'}/?verify=${token}`;
   
-  if (!emailTransporter) {
+  if (!resendClient) {
     console.log(`📧 Email verification link for ${email}: ${verifyUrl}`);
     console.log('   (No SMTP configured - logging only)');
     return true;
   }
 
   try {
-    await emailTransporter.sendMail({
+    await resendClient.emails.send({
       from: `"FreeSign" <${FROM_EMAIL}>`,
       to: email,
       subject: 'Verify your FreeSign account',
@@ -394,7 +392,8 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const usage = await getMonthlyUsage(req.user.id);
-    const limit = getTierLimit(req.user.tier);
+    const credits = req.user.signature_credits || 0;
+    const freeRemaining = Math.max(0, FREE_MONTHLY_LIMIT - usage);
 
     res.json({
       user: {
@@ -407,8 +406,9 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
       },
       usage: {
         used: usage,
-        limit: limit === Infinity ? null : limit,
-        remaining: limit === Infinity ? null : Math.max(0, limit - usage)
+        limit: FREE_MONTHLY_LIMIT,
+        remaining: freeRemaining,
+        credits: credits,
       }
     });
   } catch (err) {
@@ -423,12 +423,14 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 app.get('/api/usage', authenticateToken, async (req, res) => {
   try {
     const usage = await getMonthlyUsage(req.user.id);
-    const limit = getTierLimit(req.user.tier);
+    const credits = req.user.signature_credits || 0;
+    const freeRemaining = Math.max(0, FREE_MONTHLY_LIMIT - usage);
 
     res.json({
       used: usage,
-      limit: limit === Infinity ? null : limit,
-      remaining: limit === Infinity ? null : Math.max(0, limit - usage),
+      limit: FREE_MONTHLY_LIMIT,
+      remaining: freeRemaining,
+      credits: credits,
       tier: req.user.tier,
       period: 'monthly'
     });
@@ -452,14 +454,26 @@ app.post('/api/signatures/record', authenticateToken, async (req, res) => {
     const { documentName } = req.body;
     
     const usage = await getMonthlyUsage(req.user.id);
-    const limit = getTierLimit(req.user.tier);
+    const credits = req.user.signature_credits || 0;
+    const freeRemaining = Math.max(0, FREE_MONTHLY_LIMIT - usage);
 
-    if (usage >= limit) {
+    let usedCredit = false;
+
+    if (freeRemaining > 0) {
+      // Use free allocation
+    } else if (credits > 0) {
+      // Deduct a paid credit
+      await pool.query(
+        'UPDATE users SET signature_credits = signature_credits - 1 WHERE id = $1 AND signature_credits > 0',
+        [req.user.id]
+      );
+      usedCredit = true;
+    } else {
+      // No free sigs left and no credits
       return res.status(402).json({
-        error: 'Monthly signature limit reached',
+        error: 'No signatures remaining',
         code: 'LIMIT_EXCEEDED',
-        usage: { used: usage, limit: limit },
-        upgradeUrl: '/api/billing/checkout?plan=pro'
+        usage: { used: usage, limit: FREE_MONTHLY_LIMIT, credits: 0 },
       });
     }
 
@@ -469,14 +483,18 @@ app.post('/api/signatures/record', authenticateToken, async (req, res) => {
     );
 
     const newUsage = usage + 1;
+    const newCredits = usedCredit ? credits - 1 : credits;
+    const newFreeRemaining = Math.max(0, FREE_MONTHLY_LIMIT - newUsage);
 
     res.json({
       success: true,
       allowed: true,
+      usedCredit: usedCredit,
       usage: {
         used: newUsage,
-        limit: limit === Infinity ? null : limit,
-        remaining: limit === Infinity ? null : Math.max(0, limit - newUsage)
+        limit: FREE_MONTHLY_LIMIT,
+        remaining: newFreeRemaining,
+        credits: newCredits,
       }
     });
   } catch (err) {
@@ -489,18 +507,22 @@ app.post('/api/signatures/record', authenticateToken, async (req, res) => {
 app.get('/api/signatures/check', authenticateToken, async (req, res) => {
   try {
     const usage = await getMonthlyUsage(req.user.id);
-    const limit = getTierLimit(req.user.tier);
-    const canSign = usage < limit;
+    const credits = req.user.signature_credits || 0;
+    const freeRemaining = Math.max(0, FREE_MONTHLY_LIMIT - usage);
+    const canSign = freeRemaining > 0 || credits > 0;
 
     res.json({
       allowed: canSign,
       emailVerified: req.user.email_verified,
       usage: {
         used: usage,
-        limit: limit === Infinity ? null : limit,
-        remaining: limit === Infinity ? null : Math.max(0, limit - usage)
+        limit: FREE_MONTHLY_LIMIT,
+        remaining: freeRemaining,
+        credits: credits,
       },
-      tier: req.user.tier
+      tier: req.user.tier,
+      purchaseAvailable: true,
+      purchasePrice: '$0.99',
     });
   } catch (err) {
     console.error('Check signature error:', err);
@@ -510,7 +532,60 @@ app.get('/api/signatures/check', authenticateToken, async (req, res) => {
 
 // ========== BILLING ENDPOINTS ==========
 
-// Create checkout session for Pro plan
+// Purchase a single signature credit ($0.99)
+app.post('/api/billing/purchase-signature', authenticateToken, async (req, res) => {
+  try {
+    if (!stripe) {
+      return res.status(503).json({ error: 'Stripe is not configured yet. Please contact support.' });
+    }
+
+    let customerId = req.user.stripe_customer_id;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: req.user.email,
+        name: req.user.name,
+        metadata: { userId: String(req.user.id) }
+      });
+      customerId = customer.id;
+      
+      await pool.query(
+        'UPDATE users SET stripe_customer_id = $1 WHERE id = $2',
+        [customerId, req.user.id]
+      );
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'FreeSign - 1 Signature Credit',
+            description: 'One PDF signature credit (never expires)',
+          },
+          unit_amount: SIGNATURE_PRICE_CENTS,
+        },
+        quantity: 1,
+      }],
+      mode: 'payment',
+      success_url: `${process.env.FRONTEND_URL || 'https://freesign.ink'}/?checkout=success`,
+      cancel_url: `${process.env.FRONTEND_URL || 'https://freesign.ink'}/?checkout=canceled`,
+      metadata: { 
+        userId: String(req.user.id), 
+        type: 'signature_credit',
+        credits: '1',
+      }
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('Purchase signature error:', err);
+    res.status(500).json({ error: 'Failed to create checkout session' });
+  }
+});
+
+// Legacy: Create checkout session for Pro plan (kept but hidden from UI)
 app.post('/api/billing/checkout', authenticateToken, async (req, res) => {
   try {
     if (!stripe) {
@@ -524,7 +599,6 @@ app.post('/api/billing/checkout', authenticateToken, async (req, res) => {
       : process.env.STRIPE_BUSINESS_PRICE_ID;
 
     if (!priceId || priceId.includes('placeholder')) {
-      // Auto-create product and price if not configured
       try {
         const result = await autoSetupStripeProduct(plan);
         priceId = result.priceId;
@@ -540,7 +614,7 @@ app.post('/api/billing/checkout', authenticateToken, async (req, res) => {
       const customer = await stripe.customers.create({
         email: req.user.email,
         name: req.user.name,
-        metadata: { userId: req.user.id }
+        metadata: { userId: String(req.user.id) }
       });
       customerId = customer.id;
       
@@ -559,7 +633,7 @@ app.post('/api/billing/checkout', authenticateToken, async (req, res) => {
       mode: 'subscription',
       success_url: `${process.env.FRONTEND_URL || 'https://freesign.ink'}/?checkout=success`,
       cancel_url: `${process.env.FRONTEND_URL || 'https://freesign.ink'}/?checkout=canceled`,
-      metadata: { userId: req.user.id, plan }
+      metadata: { userId: String(req.user.id), plan }
     });
 
     res.json({ url: session.url });
@@ -574,7 +648,6 @@ async function autoSetupStripeProduct(plan) {
   const productName = plan === 'pro' ? 'FreeSign Pro' : 'FreeSign Business';
   const amount = plan === 'pro' ? 999 : 2999;
 
-  // Check for existing product
   const products = await stripe.products.list({ limit: 20 });
   let product = products.data.find(p => p.name === productName && p.active);
 
@@ -587,7 +660,6 @@ async function autoSetupStripeProduct(plan) {
     });
   }
 
-  // Check for existing price
   const prices = await stripe.prices.list({ product: product.id, limit: 10 });
   let price = prices.data.find(p => p.unit_amount === amount && p.recurring?.interval === 'month' && p.active);
 
@@ -600,11 +672,9 @@ async function autoSetupStripeProduct(plan) {
     });
   }
 
-  // Save to env for future use
   const envKey = plan === 'pro' ? 'STRIPE_PRO_PRICE_ID' : 'STRIPE_BUSINESS_PRICE_ID';
   process.env[envKey] = price.id;
   
-  // Also update the .env file
   const fs = require('fs');
   const path = require('path');
   try {
@@ -662,9 +732,19 @@ async function handleStripeWebhook(req, res) {
       case 'checkout.session.completed': {
         const session = event.data.object;
         const userId = session.metadata?.userId;
-        const plan = session.metadata?.plan || 'pro';
+        const type = session.metadata?.type;
 
-        if (userId) {
+        if (userId && type === 'signature_credit') {
+          // Pay-per-signature: add credits
+          const creditsToAdd = parseInt(session.metadata?.credits || '1');
+          await pool.query(
+            `UPDATE users SET signature_credits = COALESCE(signature_credits, 0) + $1 WHERE id = $2`,
+            [creditsToAdd, userId]
+          );
+          console.log(`✅ Added ${creditsToAdd} signature credit(s) to user ${userId}`);
+        } else if (userId) {
+          // Legacy subscription flow
+          const plan = session.metadata?.plan || 'pro';
           await pool.query(
             `UPDATE users 
              SET tier = $1, 
@@ -734,7 +814,7 @@ app.get('/api/health', (req, res) => {
     status: 'ok', 
     timestamp: new Date().toISOString(),
     stripe: stripeReady ? 'configured' : 'not configured',
-    email: emailTransporter ? 'configured' : 'log-only',
+    email: resendClient ? '✅ Resend' : '📋 log-only',
   });
 });
 
@@ -748,7 +828,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`FreeSign API server running on port ${PORT}`);
   console.log(`  Stripe: ${stripeReady ? '✅ configured' : '⚠️  placeholder keys'}`);
-  console.log(`  Email:  ${emailTransporter ? '✅ configured' : '📋 log-only mode'}`);
+  console.log(`  Email:  ${resendClient ? '✅ Resend' : '📋 log-only mode'}`);
 });
 
 module.exports = app;
