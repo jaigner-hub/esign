@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FreeSign.ink - Sign PDFs Privately</title>
+  <link rel="stylesheet" href="css/style.css?v=20260219d">
+</head>
+<body>
+
+  <!-- Hidden file input for PDF open -->
+  <input type="file" id="file-input" accept=".pdf,application/pdf" style="display:none">
+
+  <!-- Header Bar -->
+  <header id="header">
+    <div class="header-brand">FreeSign.ink</div>
+    <div class="header-actions">
+      <span id="usage-display" class="usage-display hidden"></span>
+      <button id="header-open-btn" class="header-btn">Open PDF</button>
+      <button id="auth-login-btn" class="header-btn btn-secondary">Log In</button>
+      <button id="auth-signup-btn" class="header-btn btn-primary">Sign Up</button>
+      <div id="user-menu" class="user-menu hidden">
+        <span id="user-email"></span>
+        <span id="user-tier" class="tier-badge">Free</span>
+        <button id="auth-logout-btn" class="header-btn btn-secondary">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Drop Zone (visible when no PDF is loaded) -->
+  <div id="drop-zone">
+    <div class="drop-zone-content">
+      <div class="drop-zone-icon">📄</div>
+      <h1>Sign PDFs Privately</h1>
+      <p class="drop-zone-text">Your documents never leave your browser</p>
+      <p class="drop-zone-subtext">3 free signatures per month. Upgrade for unlimited.</p>
+      <button id="drop-zone-open-btn" class="btn-primary btn-large">Choose PDF to Sign</button>
+    </div>
+  </div>
+
+  <!-- Main Workspace (hidden until PDF is loaded) -->
+  <div id="workspace" class="hidden">
+    <!-- Left Sidebar -->
+    <aside id="sidebar">
+      <div id="signature-panel-container" class="panel-section">
+        <h3 class="panel-title">Signature</h3>
+      </div>
+      <div id="text-panel-container" class="panel-section">
+        <h3 class="panel-title">Text Field</h3>
+      </div>
+    </aside>
+
+    <!-- PDF Viewer Area -->
+    <main id="viewer-area">
+      <div id="pdf-container"></div>
+    </main>
+  </div>
+
+  <!-- Bottom Action Bar -->
+  <div id="action-bar" class="hidden">
+    <div class="action-bar-content">
+      <span id="action-usage-display" class="usage-display hidden"></span>
+      <button id="sign-save-btn" class="btn-primary btn-large" disabled>Sign & Save</button>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="hidden">
+    <div class="spinner"></div>
+    <p class="loading-text">Processing...</p>
+  </div>
+
+  <!-- Auth Modal -->
+  <div id="auth-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-tabs">
+        <button id="login-tab" class="modal-tab active">Log In</button>
+        <button id="signup-tab" class="modal-tab">Sign Up</button>
+      </div>
+      
+      <!-- Login Form -->
+      <div id="login-form" class="auth-form">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="••••••">
+        </div>
+        <button id="login-submit" class="btn-primary btn-full">Log In</button>
+        <p class="form-footer">Don't have an account? <span class="link" onclick="document.getElementById('signup-tab').click()">Sign up</span></p>
+      </div>
+      
+      <!-- Signup Form -->
+      <div id="signup-form" class="auth-form hidden">
+        <div class="form-group">
+          <label for="signup-name">Name (optional)</label>
+          <input type="text" id="signup-name" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label for="signup-email">Email</label>
+          <input type="email" id="signup-email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <input type="password" id="signup-password" placeholder="At least 6 characters">
+        </div>
+        <button id="signup-submit" class="btn-primary btn-full">Create Free Account</button>
+        <p class="form-footer">Already have an account? <span class="link" onclick="document.getElementById('login-tab').click()">Log in</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upgrade Modal (created dynamically in JS) -->
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- pdf.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module"></script>
+  <script type="module">
+    import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+    window.pdfjsLib = pdfjsLib;
+    window.dispatchEvent(new Event('pdfjsReady'));
+  </script>
+
+  <!-- pdf-lib for signing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+  <!-- Renderer modules -->
+  <script src="js/pdf-viewer.js?v=20260219d"></script>
+  <script src="js/placement.js?v=20260219d"></script>
+  <script src="js/signature-panel.js?v=20260219d"></script>
+  <script src="js/text-panel.js?v=20260219d"></script>
+  <script src="js/app.js?v=20260219d"></script>
+</body>
+</html>
