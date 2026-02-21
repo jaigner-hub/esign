@@ -2,16 +2,24 @@ use tauri_plugin_dialog::DialogExt;
 
 /// Open a PDF via native file dialog. Returns { bytes, name } or null if cancelled.
 #[tauri::command]
-fn open_pdf(app: tauri::AppHandle) -> Result<Option<serde_json::Value>, String> {
-    let result = app
-        .dialog()
+async fn open_pdf(app: tauri::AppHandle) -> Result<Option<serde_json::Value>, String> {
+    let (tx, rx) = std::sync::mpsc::channel::<Option<tauri_plugin_dialog::FilePath>>();
+
+    app.dialog()
         .file()
         .add_filter("PDF Files", &["pdf"])
-        .blocking_pick_file();
+        .pick_file(move |path| {
+            let _ = tx.send(path);
+        });
 
-    match result {
-        Some(file_path) => {
-            let path = file_path
+    // Wait on a dedicated blocking thread so we don't stall the async runtime
+    let file_path = tauri::async_runtime::spawn_blocking(move || rx.recv().ok().flatten())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    match file_path {
+        Some(fp) => {
+            let path = fp
                 .into_path()
                 .map_err(|_| "Unsupported path type".to_string())?;
             let name = path
@@ -19,7 +27,10 @@ fn open_pdf(app: tauri::AppHandle) -> Result<Option<serde_json::Value>, String> 
                 .and_then(|n| n.to_str())
                 .unwrap_or("document.pdf")
                 .to_string();
-            let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+            let bytes = tauri::async_runtime::spawn_blocking(move || std::fs::read(&path))
+                .await
+                .map_err(|e| e.to_string())?
+                .map_err(|e| e.to_string())?;
             Ok(Some(serde_json::json!({ "bytes": bytes, "name": name })))
         }
         None => Ok(None),
@@ -28,25 +39,36 @@ fn open_pdf(app: tauri::AppHandle) -> Result<Option<serde_json::Value>, String> 
 
 /// Save a PDF via native save dialog. Returns the saved path or null if cancelled.
 #[tauri::command]
-fn save_pdf(
+async fn save_pdf(
     app: tauri::AppHandle,
     bytes: Vec<u8>,
     default_name: String,
 ) -> Result<Option<String>, String> {
-    let result = app
-        .dialog()
+    let (tx, rx) = std::sync::mpsc::channel::<Option<tauri_plugin_dialog::FilePath>>();
+
+    app.dialog()
         .file()
         .set_file_name(&default_name)
         .add_filter("PDF Files", &["pdf"])
-        .blocking_save_file();
+        .save_file(move |path| {
+            let _ = tx.send(path);
+        });
 
-    match result {
-        Some(file_path) => {
-            let path = file_path
+    let file_path = tauri::async_runtime::spawn_blocking(move || rx.recv().ok().flatten())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    match file_path {
+        Some(fp) => {
+            let path = fp
                 .into_path()
                 .map_err(|_| "Unsupported path type".to_string())?;
-            std::fs::write(&path, &bytes).map_err(|e| e.to_string())?;
-            Ok(Some(path.to_string_lossy().to_string()))
+            let path_str = path.to_string_lossy().to_string();
+            tauri::async_runtime::spawn_blocking(move || std::fs::write(&path, &bytes))
+                .await
+                .map_err(|e| e.to_string())?
+                .map_err(|e| e.to_string())?;
+            Ok(Some(path_str))
         }
         None => Ok(None),
     }

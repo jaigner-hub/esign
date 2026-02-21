@@ -4,7 +4,7 @@
   "description": "Free open-source desktop application for signing PDFs",
   "scripts": {
     "tauri": "tauri",
-    "start": "tauri dev",
+    "start": "WEBKIT_DISABLE_DMABUF_RENDERER=1 GDK_BACKEND=x11 tauri dev",
     "package": "tauri build"
   },
   "keywords": [
