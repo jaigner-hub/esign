@@ -223,18 +223,24 @@ a:hover {
   margin-bottom: 8px;
 }
 
-.download-card p {
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 20px;
+.download-links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
 }
 
-.download-card code {
-  background: #f0f0f0;
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-family: monospace;
-  font-size: 12px;
+.download-links .btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pkg-note {
+  font-size: 11px;
+  color: #888;
+  font-weight: 400;
 }
 
 .build-from-source {
