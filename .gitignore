@@ -1,5 +1,6 @@
 logs/
 node_modules/
-backend/.env
+src-tauri/target/
+dist/
 *.bak
 *.bak.*

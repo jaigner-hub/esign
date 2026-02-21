@@ -1,5 +1,6 @@
 /**
  * Signature creation panel — font selection, preview, and placement
+ * Renders signatures using browser Canvas API
  * Exposes window.SignaturePanel
  */
 (function () {
@@ -19,7 +20,6 @@
   let fontSizeSlider = null;
   let fontSizeLabel = null;
   let colorInput = null;
-  let previewBtn = null;
   let addBtn = null;
   let previewArea = null;
   let selectedFontIndex = 0;
@@ -64,9 +64,11 @@
       box.style.fontFamily = FONT_FAMILIES[i].css;
       box.textContent = 'Signature';
       box.dataset.fontIndex = i;
-      box.addEventListener('click', function () {
-        selectFont(i);
-      });
+      (function (idx) {
+        box.addEventListener('click', function () {
+          selectFont(idx);
+        });
+      })(i);
       grid.appendChild(box);
       fontBoxes.push(box);
     }
@@ -123,6 +125,13 @@
     actions.appendChild(addBtn);
 
     containerEl.appendChild(actions);
+
+    // Preload all signature fonts so they're ready for canvas rendering
+    if (document.fonts && document.fonts.load) {
+      FONT_FAMILIES.forEach(function (f) {
+        document.fonts.load('48px ' + f.css, 'Signature');
+      });
+    }
   }
 
   function selectFont(index) {
@@ -158,30 +167,69 @@
     }, 300);
   }
 
-  async function renderPreview(name) {
-    const opts = {
-      name: name,
-      fontIndex: selectedFontIndex,
-      fontSize: parseInt(fontSizeSlider.value, 10),
-      color: colorInput.value
-    };
+  /**
+   * Render signature preview using the browser Canvas API.
+   */
+  function renderPreview(name) {
+    const font = FONT_FAMILIES[selectedFontIndex];
+    const fontSize = parseInt(fontSizeSlider.value, 10);
+    const color = colorInput.value;
+    const fontString = fontSize + 'px ' + font.css;
 
-    try {
-      const result = await window.electronAPI.renderSignature(opts);
-      // Only apply if name hasn't changed during render
-      if (nameInput.value.trim() !== name) return;
-      lastPreview = result;
-
-      previewArea.innerHTML = '';
-      const img = document.createElement('img');
-      img.src = result.dataUrl;
-      previewArea.appendChild(img);
-
-      addBtn.disabled = false;
-    } catch (err) {
-      showToast('Failed to render signature: ' + err.message, 'error');
-      clearPreview();
+    // Ensure the font is loaded before drawing on canvas
+    if (document.fonts && document.fonts.load) {
+      document.fonts.load(fontString, name || 'Signature').then(function () {
+        if (nameInput.value.trim() !== name) return;
+        _drawOnCanvas(name, fontSize, color, fontString);
+      }).catch(function () {
+        _drawOnCanvas(name, fontSize, color, fontString);
+      });
+    } else {
+      _drawOnCanvas(name, fontSize, color, fontString);
     }
+  }
+
+  function _drawOnCanvas(name, fontSize, color, fontString) {
+    const padding = 4;
+
+    // Measure text
+    const measureCanvas = document.createElement('canvas');
+    measureCanvas.width = 1;
+    measureCanvas.height = 1;
+    const measureCtx = measureCanvas.getContext('2d');
+    measureCtx.font = fontString;
+    const metrics = measureCtx.measureText(name);
+
+    const ascent = Math.ceil(metrics.actualBoundingBoxAscent || fontSize);
+    const descent = Math.ceil(metrics.actualBoundingBoxDescent || fontSize * 0.4);
+    const textWidth = Math.ceil(metrics.width);
+    const width = textWidth + padding * 2;
+    const height = ascent + descent + padding;
+
+    // Render
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    ctx.font = fontString;
+    ctx.fillStyle = color;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(name, padding / 2, ascent + padding / 2);
+
+    const dataUrl = canvas.toDataURL('image/png');
+
+    // Check name hasn't changed during async font load
+    if (nameInput.value.trim() !== name) return;
+
+    lastPreview = { dataUrl: dataUrl, width: width, height: height };
+
+    previewArea.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    previewArea.appendChild(img);
+
+    addBtn.disabled = false;
   }
 
   function onAddToDocument() {

@@ -1,12 +1,19 @@
 /**
  * App initialization — file open, wire panels, sign & save flow
  * Must be loaded last after PdfViewer, Placement, SignaturePanel, TextPanel
+ * Uses browser Canvas API for signatures, pdf-lib for PDF signing.
+ * In Tauri: uses window.__TAURI__.core.invoke for file dialogs.
+ * In browser: uses <input type="file"> and blob download as fallback.
  */
 (function () {
   'use strict';
 
   let originalPdfBytes = null;
   let originalFilename = null;
+
+  function isTauri() {
+    return typeof window.__TAURI__ !== 'undefined';
+  }
 
   function initialize() {
     // Initialize PdfViewer
@@ -68,25 +75,35 @@
     if (signSaveBtn) {
       signSaveBtn.addEventListener('click', signAndSave);
     }
-
-    // Listen for menu-triggered Open PDF
-    if (window.electronAPI && window.electronAPI.onMenuOpenPdf) {
-      window.electronAPI.onMenuOpenPdf(function () {
-        openPdfDialog();
-      });
-    }
   }
 
   /**
-   * Open PDF via the Electron file dialog.
+   * Open a PDF file via Tauri file dialog (desktop) or file input (browser).
    */
   async function openPdfDialog() {
     try {
-      const result = await window.electronAPI.openFileDialog();
-      if (!result) return; // user cancelled
-
-      const bytes = new Uint8Array(result.bytes);
-      await loadPdf(bytes, result.name);
+      if (isTauri()) {
+        const result = await window.__TAURI__.core.invoke('open_pdf');
+        if (!result) return; // user cancelled
+        const bytes = new Uint8Array(result.bytes);
+        await loadPdf(bytes, result.name);
+      } else {
+        // Browser fallback: hidden file input
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.pdf,application/pdf';
+        input.onchange = async function () {
+          if (!input.files || !input.files[0]) return;
+          const file = input.files[0];
+          try {
+            const arrayBuffer = await file.arrayBuffer();
+            await loadPdf(new Uint8Array(arrayBuffer), file.name);
+          } catch (err) {
+            showToast('Failed to load PDF: ' + err.message, 'error');
+          }
+        };
+        input.click();
+      }
     } catch (err) {
       showToast('Failed to open PDF: ' + err.message, 'error');
     }
@@ -145,7 +162,7 @@
   }
 
   /**
-   * Collect elements, sign the PDF, and save.
+   * Collect elements, sign the PDF with pdf-lib, and save.
    */
   async function signAndSave() {
     if (!originalPdfBytes) {
@@ -162,31 +179,77 @@
     const loadingOverlay = document.getElementById('loading-overlay');
 
     try {
-      // Show loading overlay
       if (loadingOverlay) loadingOverlay.classList.remove('hidden');
 
-      // Sign the PDF
-      const signedBytes = await window.electronAPI.signPdf(
-        Array.from(originalPdfBytes),
-        elements
-      );
+      // Sign with pdf-lib (runs entirely in-browser / in-webview)
+      const PDFLib = window.PDFLib;
+      const pdfDoc = await PDFLib.PDFDocument.load(originalPdfBytes);
+      const pages = pdfDoc.getPages();
+      const helvetica = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
 
-      // Determine default filename
+      for (let i = 0; i < elements.length; i++) {
+        const el = elements[i];
+        const pageIndex = Math.max(0, Math.min(el.page, pages.length - 1));
+        const page = pages[pageIndex];
+        const pageSize = page.getSize();
+        const x = Math.max(0, Math.min(el.x, pageSize.width));
+        const y = Math.max(0, Math.min(el.y, pageSize.height));
+
+        if (el.type === 'signature' && el.dataUrl) {
+          const base64Data = el.dataUrl.replace(/^data:image\/png;base64,/, '');
+          const binaryString = atob(base64Data);
+          const pngBytes = new Uint8Array(binaryString.length);
+          for (let j = 0; j < binaryString.length; j++) {
+            pngBytes[j] = binaryString.charCodeAt(j);
+          }
+          const pngImage = await pdfDoc.embedPng(pngBytes);
+          const width = Math.max(1, Math.min(el.width || pngImage.width, pageSize.width));
+          const height = Math.max(1, Math.min(el.height || pngImage.height, pageSize.height));
+          page.drawImage(pngImage, { x, y, width, height });
+
+        } else if (el.type === 'text') {
+          const color = el.color || '#000000';
+          const r = parseInt(color.slice(1, 3), 16) / 255;
+          const g = parseInt(color.slice(3, 5), 16) / 255;
+          const b = parseInt(color.slice(5, 7), 16) / 255;
+          page.drawText(el.value || '', {
+            x,
+            y,
+            size: el.fontSize || 12,
+            font: helvetica,
+            color: PDFLib.rgb(r, g, b)
+          });
+        }
+      }
+
+      const signedBytes = await pdfDoc.save();
       const defaultName = 'signed-' + (originalFilename || 'document.pdf');
 
-      // Save the file
-      const savedPath = await window.electronAPI.saveFile(
-        Array.from(signedBytes),
-        defaultName
-      );
-
-      if (savedPath) {
-        showToast('Saved to: ' + savedPath, 'success');
+      if (isTauri()) {
+        // Save via Tauri file dialog
+        const savedPath = await window.__TAURI__.core.invoke('save_pdf', {
+          bytes: Array.from(signedBytes),
+          defaultName: defaultName
+        });
+        if (savedPath) {
+          showToast('Saved to: ' + savedPath, 'success');
+        }
+      } else {
+        // Browser fallback: trigger blob download
+        const blob = new Blob([signedBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = defaultName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Downloaded: ' + defaultName, 'success');
       }
     } catch (err) {
       showToast('Failed to sign PDF: ' + err.message, 'error');
     } finally {
-      // Hide loading overlay
       if (loadingOverlay) loadingOverlay.classList.add('hidden');
     }
   }
